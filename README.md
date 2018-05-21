@@ -174,11 +174,14 @@ Custom leaners must have the same structure of the macro call, but the macro nee
 
 #### 1. %SuperLearner macro
 
-Stacking is based on what Wolpert refers to as a set of 'level-0' models and a 'level-1' model, indexed by parameters $\mathbf{\beta}_m$ and $\mathbf{\alpha}$ in some study sample $S$. Where
+Stacking is based on what Wolpert refers to as a set of 'level-0' models and a 'level-1' model, indexed by parameters ![equation](http://latex.codecogs.com/gif.latex?%5Cmathbf%7B%5Cbeta%7D%5Fm) and ![equation](http://latex.codecogs.com/gif.latex?%5Cmathbf%7B%5Calpha%7D) in some study sample *S*. Where
 
-Level-0: $\hat{Y}_{m} = f_m(\mathbf{x};\mathbf{\beta}_m,S) \mbox{ for }m \in 1,\ldots,M $
 
-Level-1: $\hat{Y}_{sl} = f_{sl}(\hat{\mathbf{Y}}_{\bar{m}};\mathbf{\alpha},S)$
+
+Level-0: ![equation](http://latex.codecogs.com/gif.latex?%5Chat%7BY%7D%5F%7Bm%7D%3Df%5Fm%28%5Cmathbf%7Bx%7D%3B%5Cmathbf%7B%5Cbeta%7D%5Fm%2CS%29%5Cmbox%7B%20for%20%7Dm%5Cin1%2C%5Cldots%2CM)
+
+
+Level-1: ![equation](http://latex.codecogs.com/gif.latex?%5Chat%7BY%7D%5F%7Bsl%7D%3Df%5F%7Bsl%7D%28%5Chat%7B%5Cmathbf%7BY%7D%7D%5F%7B%5Cbar%7Bm%7D%7D%3B%5Cmathbf%7B%5Calpha%7D%2CS%29)
 
 The parameterization of the macro is based loosely on this notation. Macro parameters include the following:
 
