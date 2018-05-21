@@ -21,7 +21,7 @@ Place the following two lines at the top of your program:
     
 
 
-1) Simulate data
+Simulate data
 
     DATA train valid ;
       LENGTH id x l 3;
@@ -39,7 +39,7 @@ Place the following two lines at the top of your program:
       END;
     RUN;
 
-2) Call super learner macro
+Call super learner macro
 
     TITLE "Super learner fit";
     %SuperLearner(Y=y,
@@ -65,7 +65,7 @@ Results: linear regression has lowest cross-validated expected loss (CVrisk), bu
     
    
     
-3) Estimate mean squared error
+Estimate mean squared error
     
     DATA mse(KEEP=__train squarederror:);
      SET sl_output;
