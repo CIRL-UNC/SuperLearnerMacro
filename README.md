@@ -21,7 +21,7 @@ Place the following two lines at the top of your program:
     
 
 
-Simulate data
+1) Simulate data
 
     DATA train valid ;
       LENGTH id x l 3;
@@ -39,9 +39,9 @@ Simulate data
       END;
     RUN;
 
-Call super learner macro
+2) Call super learner macro
 
-    TITLE "Super learner predictions in validation data";
+    TITLE "Super learner fit";
     %SuperLearner(Y=y,
                   X=x l c c2,
                   indata=train, 
@@ -52,8 +52,20 @@ Call super learner macro
                   method=NNLS, 
                   dist=GAUSSIAN 
     );
+
+Results: linear regression has lowest cross-validated expected loss (CVrisk), but LASSO also contributes to super learner fit.
+
+           Super learner fit
     
-Estimate mean squared error
+    learner    Coefficient     CVrisk
+    
+    linreg       0.82097      0.23423
+    lasso        0.17903      0.26555
+    gampl        0.00000      0.30935
+    
+   
+    
+3) Estimate mean squared error
     
     DATA mse(KEEP=__train squarederror:);
      SET sl_output;
@@ -68,7 +80,7 @@ Estimate mean squared error
     RUN;
     
     
-Results: super learner has lowest mean squared prediction error (__train=0)
+Results: super learner has lowest mean squared prediction error (validation data: __train=0)
 
     Mean squared error of predictions in training/validation data
                   The MEANS Procedure
@@ -199,7 +211,7 @@ The parameterization of the macro is based loosely on this notation. Macro param
 
 - **dist**: [value = one of: GAUSSIAN,BERNOULLI; default GAUSSIAN] Super learner can be used to make predictions of a continuous (assumed gaussian in some learners) or a binary variable. Use GAUSSIAN for all continuous variables and BERNOULLI for all binary variables. Nominal/categorical variables currently not supported.
 
-- **method**:[value = one of: NNLS,NNLOGLIK,CCLOGLIK,LOGLIK,NNLS,OLS,CCLAE,NNLAE,LAE; default NNLS] the method used to estimate the $\alpha$ coefficients of the level-1 model.                    Methods are possibly indexed by prefixes: NN, CC, [none], where 
+- **method**:[value = one of: NNLS,NNLOGLIK,CCLOGLIK,LOGLIK,NNLS,OLS,CCLAE,NNLAE,LAE; default NNLS] the method used to estimate the ![equation](http://latex.codecogs.com/gif.latex?%5Cmathbf%7B%5Calpha%7D) coefficients of the level-1 model.                    Methods are possibly indexed by prefixes: NN, CC, [none], where 
 
    NN implies non-negative coefficients that are standardized after fitting to sum to 1. 
 
@@ -229,6 +241,14 @@ This is a less user-friendly version of the %SuperLearner macro that may be some
 One main difference is that %\_SuperLearner will make no guesses about variable types for **X**, so use of the **[coding]_predictors** is required for correct specification.
 
 #### 3. %CVSuperLearner macro
+This macro is used to estimate the cross-validated expected loss of super learner itself. It does not produce predictions! This gives an idea about whether super learner is the appropriate learner to use in a given scenario, and allows some choice between parameters of the the super learner model, such as the method (e.g. NNLS vs. CCLS).
+
+- **slfolds**:[value = integer; default: 10] number of ''inner folds'' (number of folds within each super learner fit) should only be different from **cvslfolds** in odd cases
+
+- **cvslfolds**:[value = integer; default: 10] number of ''outer folds'' (the number of folds for cross-validating super learner) should only be different from **slfolds** in odd cases
+
+Options repeated from %SuperLearner
+
 - **Y**: see %SuperLearner macro definition
 - **X**: see %SuperLearner macro definition
 - **by**: see %SuperLearner macro definition
@@ -241,10 +261,24 @@ One main difference is that %\_SuperLearner will make no guesses about variable 
 - **outdata**: see %SuperLearner macro definition 
 - **dist**: see %SuperLearner macro definition (default: GAUSSIAN)
 - **library**:  see %SuperLearner macro definition 
-- **slfolds**:[value = integer; default: 10] number of ''inner folds'' (number of folds within each super learner fit) should only be different from **cvslfolds** in odd cases
-- **cvslfolds**:[value = integer; default: 10] number of ''outer folds'' (the number of folds for cross- validating super learner) should only be different from **slfolds** in odd cases
 - **method**:  see %SuperLearner macro definition (default: NNLS)
 
 
 #### 4. %\_CVSuperLearner macro
 This is a less user-friendly version of the %CVSuperLearner macro that may be somewhat faster due to reduced error checking, and offers finer level controls. See the source code for further tuning options.
+
+
+#### Further reading
+##### About this macro
+
+
+##### About stacking
+1. D. H. Wolpert. Stacked generalization. Neural networks, 5(2):241–259, 1992.
+
+2. L. Breiman. Stacked regressions. Machine learning, 24(1):49–64, 1996.
+
+
+##### About super learner
+1. M. J. van der Laan, E. C. Polley, and A. E. Hubbard. Super learner. Report, Division of Biostatistics, University of California, Berkeley, 2007.
+
+2. E. C. Polley and M. J. van der Laan. Super learner in prediction. Report, Division of Biostatistics, University of California, Berkeley, 2010.
