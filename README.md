@@ -108,7 +108,7 @@ The sas script containing the SuperLearner macro actually contains 4 main macros
 ##### Available Learners (* denotes SAS Enterprise Miner procedure)
 
 - **back**: backward selection by BIC
-- **bagging**: * Bootstrap aggregation of regression/classification trees
+- **bagging**: * bootstrap aggregation of regression/classification trees
 - **bayesnet**: * Bayesian network [binary only]
 - **boxcox**: Box-Cox transformation of target variables, positively bound continuous Y only
 - **boost**: * Gradient boosting of regression/classification trees
@@ -143,15 +143,18 @@ Also includes multiple learners that are identical to other learners but include
 
 **backint**, **logitint**, **linregint**, **lassoint**, **lassobint**, **lassocvint**, **swiseint**, **larint**, **enetint**, **gamint**, **gamplint**, **marsint**, **probitint**
   
-Included R functions (requires SAS/IML and RLANG system option enabled) allows a limited set of functions that call learners in the R programming language. Provided that R is installed and the RLANG option properly enabled, the required packages will be automatically installed the first time the learner is called (if running the SuperLearner or CVSuperLearner macros)
+A number of included R functions (requires SAS/IML and RLANG system option enabled) allow a limited set of learners in the R programming language. Provided that R is installed and the RLANG option properly enabled, the required packages will be automatically installed the first time the learner is called (if running the SuperLearner or CVSuperLearner macros (internet connection must be active))
 
-- **r_bagging**:  Bootstrap aggregation of regression/classification trees (requires ipred, rpart packages)
+- **r_bagging**:  bootstrap aggregation of regression/classification trees (requires ipred, rpart packages)
 - **r_bart**:  Bayesian additive regression/classification trees (requires dbarts package)
 - **r_boost**:  Gradient boosting regression/classification (requires xgboost)
+- **r_enet**:  elastic net regression/classification with cross validated selection of shrinkage parameter (requires glmnet package)
 - **r_gam**:  generalized additive model (requires gam, foreach, splines packages)
+- **r_lasso**:  LASSO regression/classification with cross validated selection of shrinkage parameter (requires glmnet package)
 - **r_mars**: MARS - multivariate adaptive regression splines (requires earth package)
 - **r_polymars**: MARS - multivariate adaptive polynomial regression splines (requires polspline package)
 - **r_rf**: random forest using R superlearner defaults (requires randomForest package)
+- **r_ridge**:  ridge regression/classification with cross validated selection of shrinkage parameter (requires glmnet package)
 - **r_svm**:  support vector machine regression/classification (requires e1071)
 
 ##### Creating new learners
