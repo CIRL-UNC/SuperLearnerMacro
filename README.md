@@ -247,9 +247,9 @@ One main difference is that %\_SuperLearner will make no guesses about variable 
 #### 3. %CVSuperLearner macro
 This macro is used to estimate the cross-validated expected loss of super learner itself. It does not produce predictions! This gives an idea about whether super learner is the appropriate learner to use in a given scenario, and allows some choice between parameters of the the super learner model, such as the method (e.g. NNLS vs. CCLS).
 
-- **slfolds**:[value = integer; default: 10] number of ''inner folds'' (number of folds within each super learner fit) should only be different from **cvslfolds** in odd cases
-
-- **cvslfolds**:[value = integer; default: 10] number of ''outer folds'' (the number of folds for cross-validating super learner) should only be different from **slfolds** in odd cases
+- **folds**:[value = integer; default: 10] specifies two quantities (which can be individually specified in the %_CVSuperLearner macro):
+ 1. **slfolds** number of ''inner folds'' (number of folds within each super learner fit) should only be different from **cvslfolds** in odd cases
+ 2.  **cvslfolds**: number of ''outer folds'' (the number of folds for cross-validating super learner) should only be different from **slfolds** in odd cases
 
 Options repeated from %SuperLearner
 
@@ -262,7 +262,6 @@ Options repeated from %SuperLearner
 - **continuous_predictors**:  see %SuperLearner macro definition
 - **weight**: see %SuperLearner macro definition
 - **indata**: see %SuperLearner macro definition
-- **outdata**: see %SuperLearner macro definition 
 - **dist**: see %SuperLearner macro definition (default: GAUSSIAN)
 - **library**:  see %SuperLearner macro definition 
 - **method**:  see %SuperLearner macro definition (default: NNLS)
