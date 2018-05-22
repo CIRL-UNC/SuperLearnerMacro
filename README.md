@@ -122,6 +122,7 @@ The sas script containing the SuperLearner macro actually contains 4 main macros
 - **lar**: least angle regression - warning for binary outcome: does not respect [0,1] probability space
 - **lasso**: LASSO
 - **lassob**: LASSO with glmselect [use caution with binary variables] - may be appropriate for older sas versions
+- **lassocv**: LASSO with cross-validated selection of shrinkage parameter
 - **logit**: main term logistic regression
 - **linreg**: main term linear regression
 - **mars**: multivariate adaptive regression splines
@@ -140,7 +141,7 @@ The sas script containing the SuperLearner macro actually contains 4 main macros
 
 Also includes multiple learners that are identical to other learners but include all first order interaction terms:
 
-**backint**, **logitint**, **linregint**, **lassoint**, **lassobint**, **swiseint**, **larint**, **enetint**, **gamint**, **gamplint**, **marsint**, **probitint**
+**backint**, **logitint**, **linregint**, **lassoint**, **lassobint**, **lassocvint**, **swiseint**, **larint**, **enetint**, **gamint**, **gamplint**, **marsint**, **probitint**
   
 Included R functions (requires SAS/IML and RLANG system option enabled) allows a limited set of functions that call learners in the R programming language. Provided that R is installed and the RLANG option properly enabled, the required packages will be automatically installed the first time the learner is called (if running the SuperLearner or CVSuperLearner macros)
 
