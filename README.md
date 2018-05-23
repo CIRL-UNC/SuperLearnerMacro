@@ -1,7 +1,7 @@
 # SuperLearnerMacro v1.0
 A SAS macro for stacking, a supervised ensemble machine learning approach to prediction
 
-![super learner](fig/realdata.pdf)
+![super learner](fig/realdata.png)
 
 ### Requirements
 1. Windows 8+ or Red Hat Linux 7.1+ (untested on other versions)
