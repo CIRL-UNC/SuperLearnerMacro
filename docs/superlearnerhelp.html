@@ -349,7 +349,29 @@ sup {
 
 <p>Level-1: <img src="http://latex.codecogs.com/gif.latex?%5Chat%7BY%7D%5F%7Bsl%7D%3Df%5F%7Bsl%7D%28%5Chat%7B%5Cmathbf%7BY%7D%7D%5F%7B%5Cbar%7Bm%7D%7D%3B%5Cmathbf%7B%5Calpha%7D%2CS%29" alt="equation"></p>
 
-<p>The parameterization of the macro is based loosely on this notation. Macro parameters include the following:</p>
+<p>The parameterization of the macro is based loosely on this notation. A call to super learner is structured as follows:</p>
+
+<div><pre><code class="language-none">%SuperLearner(
+ Y=,
+ X=,
+ library=, 
+ indata=, 
+ preddata=, 
+ outdata=sl_out,
+ dist=GAUSSIAN,
+ method=NNLS
+ by=,
+ intvars=,
+ binary_predictors=,
+ ordinal_predictors=,
+ nominal_predictors=,
+ continuous_predictors=,
+ weight=, 
+ trtstrat=false, 
+ folds=10, 
+);</code></pre></div>
+
+<p>Macro parameters include the following:</p>
 
 <ul>
 <li><p><strong>Y</strong>: [value = variable name] the target variable, or outcome</p></li>
