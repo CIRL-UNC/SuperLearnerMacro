@@ -1,4 +1,4 @@
-# SuperLearnerMacro v1.0
+# SuperLearnerMacro
 A SAS macro for stacking, a supervised ensemble machine learning approach to prediction
 
 ![super learner](fig/realdata.png)

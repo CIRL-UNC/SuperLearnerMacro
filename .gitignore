@@ -6,10 +6,13 @@
 *.lst
 
 # invisible files
-.* 
+.gitignore
+.gitattributes 
 
 # data files
 *.sas7bdat
 
 # bbedit files
 *.bbprojectd
+
+# project files

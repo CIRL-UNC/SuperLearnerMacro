@@ -1,4 +1,6 @@
-##### Available Learners (* denotes SAS Enterprise Miner procedure)
+# SuperLearnerMacro
+
+### Available Learners (* denotes SAS Enterprise Miner procedure)
 
 - **back**: backward selection by BIC
 - **bagging**: * bootstrap aggregation of regression/classification trees

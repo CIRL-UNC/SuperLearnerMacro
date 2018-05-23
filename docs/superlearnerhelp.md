@@ -1,3 +1,5 @@
+# SuperLearnerMacro
+
 ### Usage details
 The sas script containing the SuperLearner macro actually contains 4 main macros: %SuperLearner, %\_SuperLearner, %CVSuperLearner macro, and %\_CVSuperLearner
 
@@ -6,7 +8,7 @@ The sas script containing the SuperLearner macro actually contains 4 main macros
     FILENAME slgh URL "https://raw.githubusercontent.com/CIRL-UNC/SuperLearnerMacro/9c7b712b074cda44a9a3acbb7a8b25bba32aab1e/super_learner_macro.sas";
     %INCLUDE slgh;
     
-#### Option 2 - install from release version (requires initial internet connection):
+##### Option 2 - install from release version (requires initial internet connection):
 1. Navigate to the [release page of the super learner macro here](https://github.com/CIRL-UNC/SuperLearnerMacro/releases)
 2. Download the zip/tar.gz file to your computer and open/unzip the file  - you should see a folder called SuperLearnerMacro-XXXX, where XXXX is the release number
 3. Run the following two lines in SAS (replacing appropriate path names):

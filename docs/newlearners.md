@@ -1,4 +1,6 @@
-##### Creating new learners
+# SuperLearnerMacro
+
+### Creating new learners
 All sas macros to enable a learner in the library are of the form:
 
     %learner_in(Y,indata,outdata, binary_predictors,ordinal_predictors,nominal_predictors,
