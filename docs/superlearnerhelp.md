@@ -87,7 +87,7 @@ This is a less user-friendly version of the %CVSuperLearner macro that may be so
 
 #### Further reading
 ##### About this macro
-
+1. A. P. Keil. Super Learning in the SAS system. ArXiv e-prints, May 2018. [https://arxiv.org/abs/1805.08058](https://arxiv.org/abs/1805.08058)
 
 ##### About stacking
 1. D. H. Wolpert. Stacked generalization. Neural networks, 5(2):241–259, 1992.
@@ -99,3 +99,6 @@ This is a less user-friendly version of the %CVSuperLearner macro that may be so
 1. M. J. van der Laan, E. C. Polley, and A. E. Hubbard. Super learner. Report, Division of Biostatistics, University of California, Berkeley, 2007.
 
 2. E. C. Polley and M. J. van der Laan. Super learner in prediction. Report, Division of Biostatistics, University of California, Berkeley, 2010.
+
+#### Acknowledgements
+This work would not have been possible without valuable advice and beta testing from the following people: Jessie K Edwards, Katie M O'Brien, Stephen R Cole, and many others
