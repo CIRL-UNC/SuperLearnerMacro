@@ -40,3 +40,28 @@ DATA train(DROP=i my) test(DROP=i my);
 			  printres=TRUE
 ); 
 
+%MACRO rsq(library = inreg linregint rf bagging10 bagging01 bagging00 baggingms5 gam2 gam3 gam4 boost nn2 nn3 nn4 nn5 mars loess75 loess50 loess25 loess10);
+  %LET j = 1;
+  %LET res = (y-p_sl_full)**2 AS res_sl,;
+  %LET rsq = 1-MEAN(res_sl)/MEAN(devsq) AS rsq_sl, ;
+  %DO %WHILE(%SCAN(&library, &j)^=);
+    %LET book = %SCAN(&library, &j);
+    %LET res = &res (y-p_&book._full)**2 AS res_&book,;
+    %LET rsq = &rsq 1-MEAN(res_&book.)/MEAN(devsq) AS rsq_&book,;
+  %LET j = %EVAL(&j+1);
+  %END;
+  %PUT &res;
+  %PUT &rsq;
+  PROC SQL;
+    CREATE TABLE dev AS SELECT &res (Y-MEAN(Y))**2 AS devsq FROM sl_outdata;
+    SELECT &rsq MEAN(devsq) as den FROM DEV;
+    CREATE TABLE rsq AS SELECT &rsq MEAN(devsq) as den FROM DEV;
+  QUIT;
+%MEND;
+
+%rsq(library= linreg linregint rf bagging10 bagging01 bagging00 baggingms5 gam2 gam3 gam4 boost nn2 nn3 nn4 nn5 mars loess75 loess50 loess25 loess10);
+
+PROC PRINT DATA = rsq;
+ TITLE 'r squared';
+RUN;
+
