@@ -20,10 +20,9 @@ OPTIONS MERGENOBY = warn NODATE NONUMBER LINESIZE = 120  PAGESIZE=80 SKIP = 2 FO
 OPTIONS FORMCHAR = '|----|+|---+=|-/\<>*';
 
 
-* pre-release 1.0 of super learner;
-FILENAME slgh URL "https://raw.githubusercontent.com/CIRL-UNC/SuperLearnerMacro/9c7b712b074cda44a9a3acbb7a8b25bba32aab1e/super_learner_macro.sas";
+* developmental version of super learner macro;
+FILENAME slgh URL "https://cirl-unc.github.io/SuperLearnerMacro/super_learner_macro.sas";
 %INCLUDE slgh;
-
 
 
 /**********************************************************************************************************************
