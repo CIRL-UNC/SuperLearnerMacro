@@ -317,59 +317,66 @@ sup {
 
 <h3 id="toc_1">Available Learners (* denotes SAS Enterprise Miner procedure)</h3>
 
+<ol>
+<li><h4 id="toc_2">Learners based on SAS procedures</h4>
+
+<p><strong>learner</strong>: description (SAS procedure)</p>
+
 <ul>
-<li><strong>back</strong>: backward selection by BIC</li>
-<li><strong>bagging</strong>: * bootstrap aggregation of regression/classification trees</li>
-<li><strong>bayesnet</strong>: * Bayesian network [binary only]</li>
-<li><strong>boxcox</strong>: Box-Cox transformation of target variables, positively bound continuous Y only</li>
-<li><strong>boost</strong>: * Gradient boosting of regression/classification trees</li>
-<li><strong>cvcart</strong>: classification/regression tree with cross validated selection of meta parameters</li>
-<li><strong>cart</strong>: classification/regression tree, no cross validation</li>
-<li><strong>enet</strong>: elastic net - warning for binary outcome: does not respect [0,1] probability space </li>
-<li><strong>gam</strong>: generalized additive model with 3 df splines on all continuous variables</li>
-<li><strong>gampl</strong>: faster generalized additive model with 3 df splines on all continuous variables</li>
-<li><strong>glm</strong>: linear or logistic regression: slower wrappers for logit and linreg</li>
-<li><strong>knn</strong>: [bernoulli only] k-nearest neighbors classification</li>
-<li><strong>lar</strong>: least angle regression - warning for binary outcome: does not respect [0,1] probability space</li>
-<li><strong>lasso</strong>: LASSO</li>
-<li><strong>lassob</strong>: LASSO with glmselect [use caution with binary variables] - may be appropriate for older sas versions</li>
-<li><strong>lassocv</strong>: LASSO with cross-validated selection of shrinkage parameter</li>
-<li><strong>logit</strong>: main term logistic regression</li>
-<li><strong>linreg</strong>: main term linear regression</li>
-<li><strong>mars</strong>: multivariate adaptive regression splines</li>
-<li><strong>mean</strong>: marginal mean of the prediction variable</li>
-<li><strong>nbayes</strong>: * naive Bayes</li>
-<li><strong>bspline</strong>: basis spline regression</li>
-<li><strong>pbspline</strong>: penalized basis spline regression [SINGLE CONTINUOUS PREDICTOR ONLY]</li>
-<li><strong>probit</strong>: main term probit regression</li>
-<li><strong>ridge</strong>: ridge regression - warning for binary outcome: does not respect [0,1] probability space</li>
-<li><strong>quantreg</strong>: Quantile regression for the median - warning for binary outcome: does not respect [0,1] probability space</li>
-<li><strong>rf</strong>: random forest</li>
-<li><strong>rfoob</strong>: random forest, using out of bag predictions and modified selection criteria</li>
-<li><strong>nn</strong>: * neural network</li>
-<li><strong>sherwood</strong>: * random forest, using proc ARBOR, sampling with replacement</li>
-<li><strong>swise</strong>: Stepwise model selection with HPGENSELECT - may be appropriate alternative to lasso for older sas versions</li>
+<li><strong>back</strong>: backward selection by BIC (HPGENSELECT)</li>
+<li>*<strong>bagging</strong>: bootstrap aggregation of regression/classification trees (ARBOR)</li>
+<li>*<strong>bayesnet</strong>: Bayesian network [binary only] (HPBNET)</li>
+<li><strong>boxcox</strong>: Box-Cox transformation of target variables, positively bound continuous Y only (TRANSREG)</li>
+<li>*<strong>boost</strong>: Gradient boosting of regression/classification trees (ARBOR)</li>
+<li><strong>cvcart</strong>: classification/regression tree with cross validated selection of meta parameters (HPSPLIT)</li>
+<li><strong>cart</strong>: classification/regression tree, no cross validation (HPSPLIT)</li>
+<li><strong>enet</strong>: elastic net - warning for binary outcome: does not respect [0,1] probability space (GLMSELECT)</li>
+<li><strong>gam</strong>: generalized additive model with 3 df splines on all continuous variables (GAM)</li>
+<li><strong>gampl</strong>: faster generalized additive model with 3 df splines on all continuous variables (GAMPL)</li>
+<li><strong>glm</strong>: linear or logistic regression: slower wrappers for logit and linreg (GENMOD/REG)</li>
+<li><strong>knn</strong>: [bernoulli only] k-nearest neighbors classification (DISCRIM)</li>
+<li><strong>lar</strong>: least angle regression - warning for binary outcome: does not respect [0,1] probability space (GLMSELECT)</li>
+<li><strong>lasso</strong>: least absolute shrinkage and selection operator (HPGENSELECT)</li>
+<li><strong>lassob</strong>: LASSO with glmselect [use caution with binary variables] - may be appropriate for older sas versions (GLMSELECT)</li>
+<li><strong>lassocv</strong>: LASSO with cross-validated selection of shrinkage parameter (HPGENSELECT)</li>
+<li><strong>logit</strong>: main term logistic regression (GENMOD)</li>
+<li><strong>linreg</strong>: main term linear regression (REG)</li>
+<li><strong>mars</strong>: multivariate adaptive regression splines (ADAPTIVEREG)</li>
+<li><strong>mean</strong>: marginal mean of the prediction variable (GENMOD)</li>
+<li>*<strong>nbayes</strong>: naive Bayes (HPBNET)</li>
+<li><strong>bspline</strong>: basis spline regression (TRANSREG)</li>
+<li><strong>pbspline</strong>: penalized basis spline regression [SINGLE CONTINUOUS PREDICTOR ONLY] (TRANSREG)</li>
+<li><strong>probit</strong>: main term probit regression (PROBIT)</li>
+<li><strong>ridge</strong>: ridge regression - warning for binary outcome: does not respect [0,1] probability space (REG)</li>
+<li><strong>quantreg</strong>: Quantile regression for the median - warning for binary outcome: does not respect [0,1] probability space (QUANTREG)</li>
+<li><strong>rf</strong>: random forest (HPFOREST)</li>
+<li><strong>rfoob</strong>: random forest, using out of bag predictions and modified selection criteria (HPFOREST)</li>
+<li>*<strong>nn</strong>: neural network (HPNEURAL)</li>
+<li>*<strong>sherwood</strong>: random forest, sampling with replacement (ARBOR)</li>
+<li><strong>swise</strong>: Stepwise model selection - may be appropriate alternative to lasso for older sas versions (HPGENSELECT)</li>
 </ul>
 
 <p>Also includes multiple learners that are identical to other learners but include all first order interaction terms:</p>
 
-<p><strong>backint</strong>, <strong>logitint</strong>, <strong>linregint</strong>, <strong>lassoint</strong>, <strong>lassobint</strong>, <strong>lassocvint</strong>, <strong>swiseint</strong>, <strong>larint</strong>, <strong>enetint</strong>, <strong>gamint</strong>, <strong>gamplint</strong>, <strong>marsint</strong>, <strong>probitint</strong></p>
+<p><strong>backint</strong>, <strong>logitint</strong>, <strong>linregint</strong>, <strong>lassoint</strong>, <strong>lassobint</strong>, <strong>lassocvint</strong>, <strong>swiseint</strong>, <strong>larint</strong>, <strong>enetint</strong>, <strong>gamint</strong>, <strong>gamplint</strong>, <strong>marsint</strong>, <strong>probitint</strong></p></li>
+<li><h4 id="toc_3">Learners based on R functions</h4>
 
 <p>A number of included R functions (requires SAS/IML and RLANG system option enabled) allow a limited set of learners in the R programming language. Provided that R is installed and the RLANG option properly enabled, the required packages will be automatically installed the first time the learner is called (if running the SuperLearner or CVSuperLearner macros (internet connection must be active))</p>
 
 <ul>
-<li><strong>r_bagging</strong>:  bootstrap aggregation of regression/classification trees (requires ipred, rpart packages)</li>
+<li><strong>r_bagging</strong>:  bootstrap aggregation of regression/classification trees (requires ipred package)</li>
 <li><strong>r_bart</strong>:  Bayesian additive regression/classification trees (requires dbarts package)</li>
-<li><strong>r_boost</strong>:  Gradient boosting regression/classification (requires xgboost)</li>
+<li><strong>r_boost</strong>:  Gradient boosting regression/classification (requires xgboost package)</li>
 <li><strong>r_enet</strong>:  elastic net regression/classification with cross validated selection of shrinkage parameter (requires glmnet package)</li>
-<li><strong>r_gam</strong>:  generalized additive model (requires gam, foreach, splines packages)</li>
+<li><strong>r_gam</strong>:  generalized additive model (requires gam package)</li>
 <li><strong>r_lasso</strong>:  LASSO regression/classification with cross validated selection of shrinkage parameter (requires glmnet package)</li>
 <li><strong>r_mars</strong>: MARS - multivariate adaptive regression splines (requires earth package)</li>
 <li><strong>r_polymars</strong>: MARS - multivariate adaptive polynomial regression splines (requires polspline package)</li>
 <li><strong>r_rf</strong>: random forest using R superlearner defaults (requires randomForest package)</li>
 <li><strong>r_ridge</strong>:  ridge regression/classification with cross validated selection of shrinkage parameter (requires glmnet package)</li>
-<li><strong>r_svm</strong>:  support vector machine regression/classification (requires e1071)</li>
-</ul>
+<li><strong>r_svm</strong>:  support vector machine regression/classification (requires e1071 package)</li>
+</ul></li>
+</ol>
 
 
 

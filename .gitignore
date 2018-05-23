@@ -15,4 +15,5 @@
 # bbedit files
 *.bbprojectd
 
-# project files
+# prelim doc files
+docs/*.md
