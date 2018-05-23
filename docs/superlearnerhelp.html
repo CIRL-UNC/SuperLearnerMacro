@@ -317,7 +317,29 @@ sup {
 
 <p>The sas script containing the SuperLearner macro actually contains 4 main macros: %SuperLearner, %_SuperLearner, %CVSuperLearner macro, and %_CVSuperLearner</p>
 
-<h4 id="toc_1">1. %SuperLearner macro</h4>
+<h4 id="toc_1">0. Installing the macro</h4>
+
+<h5 id="toc_2">Option 1 - run the following two lines in SAS (requires internet connection each SAS session in which super learner is used):</h5>
+
+<div><pre><code class="language-none">FILENAME slgh URL &quot;https://raw.githubusercontent.com/CIRL-UNC/SuperLearnerMacro/9c7b712b074cda44a9a3acbb7a8b25bba32aab1e/super_learner_macro.sas&quot;;
+%INCLUDE slgh;</code></pre></div>
+
+<h4 id="toc_3">Option 2 - install from release version (requires initial internet connection):</h4>
+
+<ol>
+<li>Navigate to the <a href="https://github.com/CIRL-UNC/SuperLearnerMacro/releases">release page of the super learner macro here</a></li>
+<li>Download the zip/tar.gz file to your computer and open/unzip the file  - you should see a folder called SuperLearnerMacro-XXXX, where XXXX is the release number</li>
+<li>Run the following two lines in SAS (replacing appropriate path names):</li>
+</ol>
+
+<p><a href=""></a></p>
+
+<div><pre><code class="language-none">FILENAME slgh &quot;C:/path/to/SuperLearnerMacro-XXXX/super_learner_macro.sas&quot;;
+%INCLUDE slgh;</code></pre></div>
+
+<p>Some examples of using the %SuperLearner macro are <a href="../examples/">available here</a></p>
+
+<h4 id="toc_4">1. Using %SuperLearner macro</h4>
 
 <p>Stacking is based on what Wolpert refers to as a set of &#39;level-0&#39; models and a &#39;level-1&#39; model, indexed by parameters <img src="http://latex.codecogs.com/gif.latex?%5Cmathbf%7B%5Cbeta%7D%5Fm" alt="equation"> and <img src="http://latex.codecogs.com/gif.latex?%5Cmathbf%7B%5Calpha%7D" alt="equation"> in some study sample <em>S</em>. Where</p>
 
@@ -359,13 +381,13 @@ which may cause computational difficulties</p></li>
 <li><p><strong>folds</strong>: [value  = integer ; default: 10] number of cross-validation folds to use</p></li>
 </ul>
 
-<h4 id="toc_2">2. %_SuperLearner macro</h4>
+<h4 id="toc_5">2. %_SuperLearner macro</h4>
 
 <p>This is a less user-friendly version of the %SuperLearner macro that may be somewhat faster due to reduced error checking, and offers finer level controls. If the %SuperLearner macro completes successfully, it will give some example code that can be run with %_SuperLearner. Of note, there is no checking of parameter syntax, so the case-sensitive parameter arguments may cause an error in %_SuperLearner, but not %SuperLearner.</p>
 
 <p>One main difference is that %_SuperLearner will make no guesses about variable types for <strong>X</strong>, so use of the <strong>[coding]_predictors</strong> is required for correct specification.</p>
 
-<h4 id="toc_3">3. %CVSuperLearner macro</h4>
+<h4 id="toc_6">3. %CVSuperLearner macro</h4>
 
 <p>This macro is used to estimate the cross-validated expected loss of super learner itself. It does not produce predictions! This gives an idea about whether super learner is the appropriate learner to use in a given scenario, and allows some choice between parameters of the the super learner model, such as the method (e.g. NNLS vs. CCLS).</p>
 
@@ -395,33 +417,33 @@ which may cause computational difficulties</p></li>
 <li><strong>method</strong>:  see %SuperLearner macro definition (default: NNLS)</li>
 </ul>
 
-<h4 id="toc_4">4. %_CVSuperLearner macro</h4>
+<h4 id="toc_7">4. %_CVSuperLearner macro</h4>
 
 <p>This is a less user-friendly version of the %CVSuperLearner macro that may be somewhat faster due to reduced error checking, and offers finer level controls. See the source code for further tuning options.</p>
 
-<h4 id="toc_5">Further reading</h4>
+<h4 id="toc_8">Further reading</h4>
 
-<h5 id="toc_6">About this macro</h5>
+<h5 id="toc_9">About this macro</h5>
 
 <ol>
 <li>A. P. Keil. Super Learning in the SAS system. ArXiv e-prints, May 2018. <a href="https://arxiv.org/abs/1805.08058">https://arxiv.org/abs/1805.08058</a></li>
 </ol>
 
-<h5 id="toc_7">About stacking</h5>
+<h5 id="toc_10">About stacking</h5>
 
 <ol>
 <li><p>D. H. Wolpert. Stacked generalization. Neural networks, 5(2):241–259, 1992.</p></li>
 <li><p>L. Breiman. Stacked regressions. Machine learning, 24(1):49–64, 1996.</p></li>
 </ol>
 
-<h5 id="toc_8">About super learner</h5>
+<h5 id="toc_11">About super learner</h5>
 
 <ol>
 <li><p>M. J. van der Laan, E. C. Polley, and A. E. Hubbard. Super learner. Report, Division of Biostatistics, University of California, Berkeley, 2007.</p></li>
 <li><p>E. C. Polley and M. J. van der Laan. Super learner in prediction. Report, Division of Biostatistics, University of California, Berkeley, 2010.</p></li>
 </ol>
 
-<h4 id="toc_9">Acknowledgements</h4>
+<h4 id="toc_12">Acknowledgements</h4>
 
 <p>This work would not have been possible without valuable advice and beta testing from the following people: Jessie K Edwards, Katie M O&#39;Brien, Stephen R Cole, and many others</p>
 

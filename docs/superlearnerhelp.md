@@ -1,7 +1,25 @@
 ### Usage details
 The sas script containing the SuperLearner macro actually contains 4 main macros: %SuperLearner, %\_SuperLearner, %CVSuperLearner macro, and %\_CVSuperLearner
 
-#### 1. %SuperLearner macro
+#### 0. Installing the macro
+##### Option 1 - run the following two lines in SAS (requires internet connection each SAS session in which super learner is used):
+    FILENAME slgh URL "https://raw.githubusercontent.com/CIRL-UNC/SuperLearnerMacro/9c7b712b074cda44a9a3acbb7a8b25bba32aab1e/super_learner_macro.sas";
+    %INCLUDE slgh;
+    
+#### Option 2 - install from release version (requires initial internet connection):
+1. Navigate to the [release page of the super learner macro here](https://github.com/CIRL-UNC/SuperLearnerMacro/releases)
+2. Download the zip/tar.gz file to your computer and open/unzip the file  - you should see a folder called SuperLearnerMacro-XXXX, where XXXX is the release number
+3. Run the following two lines in SAS (replacing appropriate path names):
+
+[]()
+
+    FILENAME slgh "C:/path/to/SuperLearnerMacro-XXXX/super_learner_macro.sas";
+    %INCLUDE slgh;
+
+
+Some examples of using the %SuperLearner macro are [available here](../examples/)
+
+#### 1. Using %SuperLearner macro
 
 Stacking is based on what Wolpert refers to as a set of 'level-0' models and a 'level-1' model, indexed by parameters ![equation](http://latex.codecogs.com/gif.latex?%5Cmathbf%7B%5Cbeta%7D%5Fm) and ![equation](http://latex.codecogs.com/gif.latex?%5Cmathbf%7B%5Calpha%7D) in some study sample *S*. Where
 
