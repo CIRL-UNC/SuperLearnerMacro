@@ -103,6 +103,8 @@ Results: super learner has lowest mean squared prediction error (validation data
 
 
 
-**[Click here for super learner macro documentation](docs/superlearnerhelp.html "Documentation")**
+**[Super learner macro documentation](https://cirl-unc.github.io/SuperLearnerMacro/docs/superlearnerhelp.html "Documentation")**
 
-**[See the github page here](https://github.com/CIRL-UNC/SuperLearnerMacro "Github page")**
+**[Super learner macro home page](https://cirl-unc.github.io/SuperLearnerMacro "Home")**
+
+**[Source code and examples at the github page](https://github.com/CIRL-UNC/SuperLearnerMacro "Github page")**
