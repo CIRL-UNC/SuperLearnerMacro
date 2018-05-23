@@ -40,7 +40,7 @@ DATA train(DROP=i my) test(DROP=i my);
 			  printres=TRUE
 ); 
 
-%MACRO rsq(library = inreg linregint rf bagging10 bagging01 bagging00 baggingms5 gam2 gam3 gam4 boost nn2 nn3 nn4 nn5 mars loess75 loess50 loess25 loess10);
+%MACRO rsq(library = );
   %LET j = 1;
   %LET res = (y-p_sl_full)**2 AS res_sl,;
   %LET rsq = 1-MEAN(res_sl)/MEAN(devsq) AS rsq_sl, ;
