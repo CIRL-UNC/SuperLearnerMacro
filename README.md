@@ -1,6 +1,8 @@
 # SuperLearnerMacro v1.0
 A SAS macro for stacking, a supervised ensemble machine learning approach to prediction
 
+![super learner](fig/realdata.pdf)
+
 ### Requirements
 1. Windows 8+ or Red Hat Linux 7.1+ (untested on other versions)
 2. SAS v 9.4+ (untested earlier versions)
@@ -203,7 +205,7 @@ The parameterization of the macro is based loosely on this notation. Macro param
 
 - **Y**: [value = variable name] the target variable, or outcome
 
-- **X**: [value =   blank, or a space separated list of variable names] predictors of **Y** on the right side of the level-0 models. Note that this is a convenience function for the individual **[coding]_predictors** macro variables. The macro will make a guess at whether each predictor in **X** is continuous, categorical, or binary. (OPTIONAL but at least one of the **X** or **[coding]_predictors** parameters must be specified). If **X** is specified and any one of the **[coding]_predictors** has a value, the macro will generate an error.
+- **X**: [value =   blank, or a space separated list of variable names] predictors of **Y** on the right side of the level-0 models. Note that this is a convenience function for the individual **[coding]_predictors** macro variables. The macro will make a guess at whether each predictor in **X** is continuous, categorical, or binary. (OPTIONAL but at least one of the **X** or **[coding]_predictors** - **binary_predictors**, **ordinal_predictors**, **nominal_predictors**, **continuous_predictors** - parameters must be specified, as described below). If **X** is specified and any one of the **[coding]_predictors** has a value, the macro will generate an error.
 
 - **library**: [value =  a space separated list of learners] the names of the *m* level-0 models (e.g. glm lasso cart). A single learner can be used here if you only wish to know the cross-validated expected loss (e.g. mean-squared error).
 
@@ -228,6 +230,7 @@ The parameterization of the macro is based loosely on this notation. Macro param
    LOGLIK methods use a loss function corresponding to the binomial likelihood with a logit link function
    LAE methods [experimental] use an L1 loss function (least absolute error), which will not penalize outliers as much as L2 methods, and is also non-differentiable at the minimum
   which may cause computational difficulties
+
 
 - **by**: [OPTIONAL value = variable name] a by variable in the usual SAS usage. Separate super learner fits will be specified for each level of the by variable (only one allowed, unlike typical ``by'' variables. 
 - **intvars**:[OPTIONAL value = variable name] an intervention variable that is included in the list of predictors. This is a convenience function that will make separate predictions for the intvars variable at 1 or 0 (with all other predictors remaining at their observed levels)
