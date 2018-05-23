@@ -18,7 +18,7 @@ Quick simulation example: predicting continuous outcomes in a validation sample 
 
 Place the following two lines at the top of your program:
 
-    FILENAME slgh URL "https://raw.githubusercontent.com/alexpkeil1/SuperLearnerMacro/master/super_learner_macro.sas";
+    FILENAME slgh URL "https://raw.githubusercontent.com/CIRL-UNC/SuperLearnerMacro/9c7b712b074cda44a9a3acbb7a8b25bba32aab1e/super_learner_macro.sas";
     %INCLUDE slgh / SOURCE2;
     
 
