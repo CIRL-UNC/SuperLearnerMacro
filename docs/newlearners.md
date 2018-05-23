@@ -11,7 +11,7 @@ Conventions:
 
 2. macro call/parameters must follow exact naming conventions as shown above in '%learner_in' example
 
-3. the sample space of each predictor must be respected (e.g. &binary_predictors should be used where binary predictors are appropriate for the learner.) For example,  model statements in, PROC genmod will contain all &..._predictor macro variables, but  &nominal_predictors could be included in a CLASS statement, for example.
+3. the sample space of each predictor must be respected (e.g. &binary\_predictors should be used where binary predictors are appropriate for the learner.) For example,  model statements in, PROC genmod will contain all &..._predictor macro variables, but  &nominal\_predictors could be included in a CLASS statement, for example.
 
 4. outdata must contain: all variables from indata dataset (the data used in the learner) PLUS a variable that follows the naming convention: p_[library name]&SUFF that is either a) predicted probability (binary dep var) or b) predicted value (non- binary dep var)
 

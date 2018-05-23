@@ -20,20 +20,29 @@ OPTIONS MERGENOBY = warn NODATE NONUMBER LINESIZE = 120  PAGESIZE=80 SKIP = 2 FO
 OPTIONS FORMCHAR = '|----|+|---+=|-/\<>*';
 
 
-%MACRO test_bernoulli_int(n=300, trueRD = .1);
+* pre-release 1.0 of super learner;
+FILENAME slgh URL "https://raw.githubusercontent.com/CIRL-UNC/SuperLearnerMacro/9c7b712b074cda44a9a3acbb7a8b25bba32aab1e/super_learner_macro.sas";
+%INCLUDE slgh;
+
+
+
+/**********************************************************************************************************************
+Example 1: predicted binary outcomes under an intervention
+**********************************************************************************************************************/
+
   *0) simulate data, including 5-fold cross validation sets;
   DATA A ;
   LENGTH id x l 3;
   CALL STREAMINIT(1192887);
   *observed data;
-   DO id = 1 TO &N;
+   DO id = 1 TO 300;
     py0_true = RAND("uniform")*0.1 + 0.4;  
     l = RAND("bernoulli", 1/(1+exp(-1 + py0_true)));
     c = RAND("normal", py0_true, 1);
     c2 = RAND("normal", py0_true, .3);
     x = RAND("bernoulli", 1/(1+exp(-1.5 + 2*l + c + c2)));
-    py = py0_true + &trueRD*(x); *true risk difference per unit exposure;
-    py1_true = py0_true + &trueRD;
+    py = py0_true + 0.1*(x); *true risk difference per unit exposure;
+    py1_true = py0_true + 0.1;
     rd_true = &truerd;
     y = RAND("bernoulli", py);
     OUTPUT;
@@ -60,23 +69,27 @@ OPTIONS FORMCHAR = '|----|+|---+=|-/\<>*';
    VAR p_: py0_: py1_: py y;
    CLASS __int;
   RUN;
-%MEND test_bernoulli_int;
 
-%MACRO test_gaussian_int(n=300, trueMEANDIFF = 1);
+
+/**********************************************************************************************************************
+Example 2: predicted continuous outcomes under an intervention
+**********************************************************************************************************************/
+
+
   *0) simulate data, including 5-fold cross validation sets;
   DATA A ;
   LENGTH id x l 3;
   CALL STREAMINIT(1192887);
   *observed data;
-   DO id = 1 TO &N;
+   DO id = 1 TO 300;
     py0_true = RAND("uniform")*0.1 + 0.4;  
     l = RAND("bernoulli", 1/(1+exp(-1 + py0_true)));
     c = RAND("normal", py0_true, 1);
     c2 = RAND("normal", py0_true, .3);
     x = RAND("bernoulli", 1/(1+exp(-1.5 + 2*l + c + c2)));
-    py = py0_true + &trueMEANDIFF*(x); *true risk difference per unit exposure;
-    py1_true = py0_true + &trueMEANDIFF;
-    meandiff_true = &trueMEANDIFF;
+    py = py0_true + 1*(x); *true risk difference per unit exposure;
+    py1_true = py0_true + 1;
+    meandiff_true = 1;
     y = RAND("NORMAL", py, 1);
     OUTPUT;
    END;
@@ -100,24 +113,27 @@ OPTIONS FORMCHAR = '|----|+|---+=|-/\<>*';
    VAR p_: py0_: py1_: py y;
    CLASS __int;
   RUN;
-%MEND test_gaussian_int;
 
-%MACRO test_slnewlearner(n=300, trueMEANDIFF = 1);
+
+/**********************************************************************************************************************
+Example 3: creating a new learner (gamma regression)
+**********************************************************************************************************************/
+
   /* template for adding in a custom learner*/
   *0) simulate data, including 5-fold cross validation sets;
   DATA A ;
   LENGTH id x l 3;
   CALL STREAMINIT(1192887);
   *observed data;
-   DO id = 1 TO &N;
+   DO id = 1 TO 300;
     py0_true = 10+RAND("uniform")*0.1 + 0.4;  
     l = RAND("bernoulli", 1/(1+exp(-1 + py0_true)));
     c = RAND("normal", py0_true, 1);
     c2 = RAND("normal", py0_true, .3);
     x = RAND("bernoulli", 1/(1+exp(-1.5 + 2*l + c + c2)));
-    py = py0_true + &trueMEANDIFF*(x); *true risk difference per unit exposure;
-    py1_true = py0_true + &trueMEANDIFF;
-    meandiff_true = &trueMEANDIFF;
+    py = py0_true + 1*(x); *true risk difference per unit exposure;
+    py1_true = py0_true + 1;
+    meandiff_true = 1;
     y = RAND("NORMAL", py, 1);
     OUTPUT;
    END;
@@ -156,7 +172,12 @@ OPTIONS FORMCHAR = '|----|+|---+=|-/\<>*';
    VAR p_: py0_: py1_: py y;
    CLASS __int;
   RUN;
-%MEND test_slnewlearner;
+
+
+/**********************************************************************************************************************
+Example 4: making predictions in a validation data set
+**********************************************************************************************************************/
+
 
 %MACRO test_slexternalpreds(ntrain=300,nvalid=1000);
   *0) simulate data, including 5-fold cross validation sets;
@@ -164,7 +185,7 @@ OPTIONS FORMCHAR = '|----|+|---+=|-/\<>*';
   LENGTH id x l 3;
   CALL STREAMINIT(1192887);
   *observed data;
-   DO id = 1 TO %EVAL(&ntrain+&nvalid);
+   DO id = 1 TO 1300;
     py0_true = RAND("uniform")*0.1 + 0.4;  
     l = RAND("bernoulli", 1/(1+exp(-1 + py0_true)));
     c = RAND("normal", py0_true, 1);
@@ -173,7 +194,7 @@ OPTIONS FORMCHAR = '|----|+|---+=|-/\<>*';
     py = py0_true + 1*(x); *true risk difference per unit exposure;
     y = RAND("NORMAL", py, 0.5);
     KEEP x l c c2 y;
-    IF id <= &ntrain THEN OUTPUT train;
+    IF id <= 300 THEN OUTPUT train;
     ELSE OUTPUT valid;
    END;
   RUN;
@@ -204,15 +225,19 @@ OPTIONS FORMCHAR = '|----|+|---+=|-/\<>*';
    VAR squarederror:;
    CLASS __train;
   RUN;
-%MEND test_slexternalpreds;
 
-%MACRO test_cvsl(n=300);
+
+
+/**********************************************************************************************************************
+Example 5: using CVSuperlearner to get cross-validated expected loss of super learner itself
+**********************************************************************************************************************/
+
   *0) simulate data;
   DATA A ;
   LENGTH id x l 3;
   CALL STREAMINIT(1192887);
   *observed data;
-   DO id = 1 TO &N;
+   DO id = 1 TO 300;
     py0_true = RAND("uniform")*0.1 + 0.4;  
     l = RAND("bernoulli", 1/(1+exp(-1 + py0_true)));
     c = RAND("normal", py0_true + 0.1*py0_true**2, 1);
@@ -235,27 +260,13 @@ OPTIONS FORMCHAR = '|----|+|---+=|-/\<>*';
                  method=CCLS, 
                  printres=TRUE
 				 );
-  %_CVSuperLearner(Y=y,
+  %CVSuperLearner(Y=y,
                    binary_predictors=  x l,
                    continuous_predictors=  c c2,
                    indata= a , 
-                   outdata= sl_cvout ,
                    library=linreg lassoint gampl , 
-                   slfolds= 10, 
-                   cvslfolds=10,
+                   folds= 10, 
                    dist= GAUSSIAN,
                    method=CCLS,
-				   cleanup=TRUE,
-				   printfoldres=FALSE,
-				   quietnotes=TRUE,
-				   logreport=FALSE
+				   cleanup=TRUE
 				   );
-%MEND test_cvsl;
-OPTIONS NOMPRINT;
-
-* uncomment any of these to show examples;
-*%test_bernoulli_int(n=300, trueRD = .1);
-*%test_gaussian_int(n=300, trueMEANDIFF = 1);
-*%test_slnewlearner(n=300, trueMEANDIFF = 1);
-*%test_slexternalpreds(ntrain=300, nvalid=1000);
-*%test_cvsl(n=300);

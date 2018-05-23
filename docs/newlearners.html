@@ -326,7 +326,7 @@ Conventions:</p>
 <ol>
 <li><p>each macro name must be structured like binary dep. vars:     %[library name]_in  non-binary dep. vars: %[library name]_cn where [library name] is the user defined name for a given learner. E.g. for a  random forest, [library name] is &#39;rf&#39; (without quotes)</p></li>
 <li><p>macro call/parameters must follow exact naming conventions as shown above in &#39;%learner_in&#39; example</p></li>
-<li><p>the sample space of each predictor must be respected (e.g. &amp;binary<em>predictors should be used where binary predictors are appropriate for the learner.) For example,  model statements in, PROC genmod will contain all &amp;...</em>predictor macro variables, but  &amp;nominal_predictors could be included in a CLASS statement, for example.</p></li>
+<li><p>the sample space of each predictor must be respected (e.g. &amp;binary_predictors should be used where binary predictors are appropriate for the learner.) For example,  model statements in, PROC genmod will contain all &amp;..._predictor macro variables, but  &amp;nominal_predictors could be included in a CLASS statement, for example.</p></li>
 <li><p>outdata must contain: all variables from indata dataset (the data used in the learner) PLUS a variable that follows the naming convention: p_[library name]&amp;SUFF that is either a) predicted probability (binary dep var) or b) predicted value (non- binary dep var)</p></li>
 <li><p>to include all interaction terms between predictors, the predictors must include  &amp;SLIXterms, which may be a mix of discrete and continuous variables</p></li>
 </ol>
