@@ -27,6 +27,44 @@ FILENAME slgh URL "https://raw.githubusercontent.com/CIRL-UNC/SuperLearnerMacro/
 
 
 /**********************************************************************************************************************
+Example 0: basic usage to predict a continuous outcome
+**********************************************************************************************************************/
+
+  *0) simulate data, including 5-fold cross validation sets;
+  DATA A ;
+  LENGTH id x l 3;
+  CALL STREAMINIT(1192887);
+  *observed data;
+   DO id = 1 TO 300;
+    py0_true = RAND("uniform")*0.1 + 0.4;  
+    l = RAND("bernoulli", 1/(1+exp(-1 + py0_true)));
+    c = RAND("normal", py0_true, 1);
+    c2 = RAND("normal", py0_true, .3);
+    x = RAND("bernoulli", 1/(1+exp(-1.5 + 2*l + c + c2)));
+    py = py0_true + 1*(x); 
+    py1_true = py0_true + 1;
+    rd_true = 0.1;
+    y = RAND("normal", py, 1);
+    OUTPUT;
+   END;
+  RUN;
+  
+  %SuperLearner(Y=y,
+                x= x l c c2,
+                indata=a, 
+                outdata=sl_testdata,
+                library= glm lassocv gampl swise,
+                folds=5, 
+                method=NNLS, 
+                dist=GAUSSIAN 
+  );
+  PROC MEANS DATA = sl_testdata FW=5;
+   TITLE 'Predicted outcomes';
+   VAR p_: y;
+  RUN;
+
+
+/**********************************************************************************************************************
 Example 1: predicted binary outcomes under an intervention
 **********************************************************************************************************************/
 
@@ -43,7 +81,7 @@ Example 1: predicted binary outcomes under an intervention
     x = RAND("bernoulli", 1/(1+exp(-1.5 + 2*l + c + c2)));
     py = py0_true + 0.1*(x); *true risk difference per unit exposure;
     py1_true = py0_true + 0.1;
-    rd_true = &truerd;
+    rd_true = 0.1;
     y = RAND("bernoulli", py);
     OUTPUT;
    END;
@@ -51,13 +89,10 @@ Example 1: predicted binary outcomes under an intervention
   
   %SuperLearner(Y=y,
                 intvars=x,
-                binary_predictors= x l,
-                ordinal_predictors=,
-                nominal_predictors=,
-                continuous_predictors=c c2,
+                x= x l c c2,
                 indata=a, 
                 outdata=sl_testdata,
-                library= logit rf lasso nn gampl,
+                library= logit lasso gampl /*rf nn */, /*uncomment rf and nn if you have sas enterprise miner installed */
   			    trtstrat=true, 
                 folds=5, 
                 method=NNLOGLIK, 
@@ -130,7 +165,7 @@ Example 3: creating a new learner (gamma regression)
     l = RAND("bernoulli", 1/(1+exp(-1 + py0_true)));
     c = RAND("normal", py0_true, 1);
     c2 = RAND("normal", py0_true, .3);
-    x = RAND("bernoulli", 1/(1+exp(-1.5 + 2*l + c + c2)));
+    x = RAND("bernoulli", 1/(1+exp(-0.5 + 2*l + (c-10) + (c2-10))));
     py = py0_true + 1*(x); *true risk difference per unit exposure;
     py1_true = py0_true + 1;
     meandiff_true = 1;
@@ -155,22 +190,18 @@ Example 3: creating a new learner (gamma regression)
   %MEND custom_cn; /*optional: include macro name in mend statement with [libraryname]_cn*/
   
   %SuperLearner(Y=y,
-                intvars=x,
                 binary_predictors= x l,
                 continuous_predictors=c c2,
                 indata=a, 
                 outdata=sl_testdata,
-                library= linreg custom, /* note how new learner is used*/
-                trtstrat=true, 
+                library= linreg custom gampl, /* note how new learner is used*/
                 folds=5, 
-                method=CCLS, /*L2 ENTROPY*/
-                dist=GAUSSIAN /*GAUSSIAN OR BERNOULLI*/
+                method=CCLS, 
+                dist=GAUSSIAN
   );
   PROC MEANS DATA = sl_testdata FW=5;
    TITLE 'Predicted outcomes';
-   TITLE2 'no intervention (int=-1), never treatment (int=0), always treat (int=1)';
-   VAR p_: py0_: py1_: py y;
-   CLASS __int;
+   VAR p_:  y;
   RUN;
 
 
@@ -179,7 +210,6 @@ Example 4: making predictions in a validation data set
 **********************************************************************************************************************/
 
 
-%MACRO test_slexternalpreds(ntrain=300,nvalid=1000);
   *0) simulate data, including 5-fold cross validation sets;
   DATA train valid ;
   LENGTH id x l 3;
@@ -207,7 +237,7 @@ Example 4: making predictions in a validation data set
                 library= linreg lasso gampl,
                 folds=10, 
                 method=NNLS, 
-                dist=GAUSSIAN /*GAUSSIAN OR BERNOULLI*/
+                dist=GAUSSIAN 
   );
   PROC MEANS DATA = sl_testdata FW=5;
    TITLE 'Predicted outcomes in training/validation data';
@@ -230,6 +260,8 @@ Example 4: making predictions in a validation data set
 
 /**********************************************************************************************************************
 Example 5: using CVSuperlearner to get cross-validated expected loss of super learner itself
+ Also: Using the more advanced _SuperLearner and _CVSuperLearner functions
+ Note that the seed value used can make a difference!
 **********************************************************************************************************************/
 
   *0) simulate data;
@@ -249,24 +281,36 @@ Example 5: using CVSuperlearner to get cross-validated expected loss of super le
    END;
   RUN;
   
+  TITLE "_superlearner, cvsuperlearner and _cvsuperlearner";
   %_SuperLearner(Y=y,
                  binary_predictors= x l,
                  continuous_predictors= c c2,
                  indata= a , 
                  outdata= sl_cvout ,
                  library=linreg lassoint gampl , 
-                 folds= 10, 
+                 folds= 5, 
                  dist= GAUSSIAN,
                  method=CCLS, 
-                 printres=TRUE
+                 printres=TRUE,
+                 seed=123211
 				 );
   %CVSuperLearner(Y=y,
                    binary_predictors=  x l,
                    continuous_predictors=  c c2,
                    indata= a , 
                    library=linreg lassoint gampl , 
-                   folds= 10, 
+                   folds= 5, 
+                   dist= GAUSSIAN,
+                   method=CCLS /*default seed is 12345*/
+				   );
+  %_CVSuperLearner(Y=y,
+                   binary_predictors=  x l,
+                   continuous_predictors=  c c2,
+                   indata= a , 
+                   library=linreg lassoint gampl , 
+                   slfolds= 5, 
+                   cvslfolds= 5, 
                    dist= GAUSSIAN,
                    method=CCLS,
-				   cleanup=TRUE
+                   seed=123211
 				   );
