@@ -337,7 +337,7 @@ sup {
 <div><pre><code class="language-none">FILENAME slgh &quot;C:/path/to/SuperLearnerMacro-XXXX/super_learner_macro.sas&quot;;
 %INCLUDE slgh;</code></pre></div>
 
-<p>Some examples of using the %SuperLearner macro are <a href="../examples/">available here</a></p>
+<p>Some examples of using the %SuperLearner macro are <a href="https://github.com/CIRL-UNC/SuperLearnerMacro/tree/master/examples">available here</a></p>
 
 <h4 id="toc_4">1. Using %SuperLearner macro</h4>
 
@@ -352,7 +352,7 @@ sup {
 <ul>
 <li><p><strong>Y</strong>: [value = variable name] the target variable, or outcome</p></li>
 <li><p><strong>X</strong>: [value =   blank, or a space separated list of variable names] predictors of <strong>Y</strong> on the right side of the level-0 models. Note that this is a convenience function for the individual <strong>[coding]_predictors</strong> macro variables. The macro will make a guess at whether each predictor in <strong>X</strong> is continuous, categorical, or binary. (OPTIONAL but at least one of the <strong>X</strong> or <strong>[coding]_predictors</strong> - <strong>binary_predictors</strong>, <strong>ordinal_predictors</strong>, <strong>nominal_predictors</strong>, <strong>continuous_predictors</strong> - parameters must be specified, as described below). If <strong>X</strong> is specified and any one of the <strong>[coding]_predictors</strong> has a value, the macro will generate an error.</p></li>
-<li><p><strong>library</strong>: [value =  a space separated list of learners] the names of the <em>m</em> level-0 models (e.g. glm lasso cart). A single learner can be used here if you only wish to know the cross-validated expected loss (e.g. mean-squared error). See <a href="docs/availablelearners.html" title="Available learners">all available default learners here</a> and <a href="docs/newlearners.html" title="Custom learners">how to construct new learners here</a></p></li>
+<li><p><strong>library</strong>: [value =  a space separated list of learners] the names of the <em>m</em> level-0 models (e.g. glm lasso cart). A single learner can be used here if you only wish to know the cross-validated expected loss (e.g. mean-squared error). See <a href="availablelearners.html" title="Available learners">all available default learners here</a> and <a href="newlearners.html" title="Custom learners">how to construct new learners here</a></p></li>
 <li><p><strong>indata</strong>: [value = an existing dataset name] the dataset used for analysis that contains <em>Y</em> and all predictors (and weight variables, if needed)</p></li>
 <li><p><strong>preddata</strong>: [OPTIONAL value = a dataset name] the validation dataset. A dataset which contains all predictors and possibly <em>Y</em> that is not used in model fitting but predictions for each learner and superlearner are made in these data</p></li>
 <li><p><strong>outdata</strong>: [value = a dataset name; default: sl_out] an output dataset that will contain all predictions as well as all variables and observations in the <strong>indata</strong> and <strong>preddata</strong> datasets</p></li>

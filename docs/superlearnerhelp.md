@@ -17,7 +17,7 @@ The sas script containing the SuperLearner macro actually contains 4 main macros
     %INCLUDE slgh;
 
 
-Some examples of using the %SuperLearner macro are [available here](../examples/)
+Some examples of using the %SuperLearner macro are [available here](https://github.com/CIRL-UNC/SuperLearnerMacro/tree/master/examples)
 
 #### 1. Using %SuperLearner macro
 
@@ -36,7 +36,7 @@ The parameterization of the macro is based loosely on this notation. Macro param
 
 - **X**: [value =   blank, or a space separated list of variable names] predictors of **Y** on the right side of the level-0 models. Note that this is a convenience function for the individual **[coding]_predictors** macro variables. The macro will make a guess at whether each predictor in **X** is continuous, categorical, or binary. (OPTIONAL but at least one of the **X** or **[coding]_predictors** - **binary_predictors**, **ordinal_predictors**, **nominal_predictors**, **continuous_predictors** - parameters must be specified, as described below). If **X** is specified and any one of the **[coding]_predictors** has a value, the macro will generate an error.
 
-- **library**: [value =  a space separated list of learners] the names of the *m* level-0 models (e.g. glm lasso cart). A single learner can be used here if you only wish to know the cross-validated expected loss (e.g. mean-squared error). See [all available default learners here](docs/availablelearners.html "Available learners") and [how to construct new learners here](docs/newlearners.html "Custom learners")
+- **library**: [value =  a space separated list of learners] the names of the *m* level-0 models (e.g. glm lasso cart). A single learner can be used here if you only wish to know the cross-validated expected loss (e.g. mean-squared error). See [all available default learners here](availablelearners.html "Available learners") and [how to construct new learners here](newlearners.html "Custom learners")
 
 - **indata**: [value = an existing dataset name] the dataset used for analysis that contains *Y* and all predictors (and weight variables, if needed)
 
