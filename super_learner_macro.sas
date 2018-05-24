@@ -1,8 +1,8 @@
-%PUT super learner macro v0.10.14 (pre-release 1.0);
+%PUT super learner macro v0.10.15 (pre-release 1.0);
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version:     0.10.14 (pre-release 1.0)
+* Version:     0.10.15 (pre-release 1.0)
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS (tested on sas 9.4 TS1M3)
@@ -889,7 +889,7 @@ RUN;
     %__SLnote(%STR(&Y is assumed to be binary));
     %IF %TRIM(&dist)^=BERNOULLI %THEN %DO;
       * setting to bernoulli;
-      %__SLwarning(%STR(dist function should be BERNOULLI for binary dependent variables, &Y appears to be non-binary. Setting dist to bernoulli.));
+      %__SLwarning(%STR(dist function should be BERNOULLI for binary dependent variables, &Y appears to be non-binary. Setting dist to BERNOULLI.));
       %LET dist=BERNOULLI;
     %END;
     %__SLnote(%STR(assumed &dist distribution, using &method algorithm to estimate SL coefficients));
@@ -900,7 +900,7 @@ RUN;
     %IF &risk = ENTROPY %THEN %__SLerror(%STR(risk function should be L2 for non-binary dependent variables, &Y appears to be continuous));;
     %IF %TRIM(&dist)^=GAUSSIAN %THEN %DO;
       * setting to gaussian;
-      %__SLwarning(%STR(Dist function should be GAUSSIAN for continuous dependent variables, &Y appears to be non-continuous. Setting dist to gaussian.));
+      %__SLwarning(%STR(Dist function should be GAUSSIAN for continuous dependent variables, &Y appears to be non-continuous. Setting dist to GAUSSIAN.));
       %LET dist=GAUSSIAN;
     %END;   
     %__SLnote(%STR(assumed &dist distribution, using &method algorithm to estimate SL coefficients));
