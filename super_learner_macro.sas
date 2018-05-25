@@ -1,8 +1,8 @@
-%PUT super learner macro v0.10.15 (pre-release 1.0);
+%PUT super learner macro v0.11.00 (pre-release 1.0);
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version:     0.10.15 (pre-release 1.0)
+* Version:     0.11.00 (pre-release 1.0)
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS (tested on sas 9.4 TS1M3)
@@ -150,6 +150,7 @@ This programs structure is:
                               r_polymars: MARS - multivariate adaptive polynomial regression splines (requires polspline package)
                               r_ridge:  ridge regression/classification with cross validated selection of shrinkage parameter (requires glmnet package)
                               r_rf: random forest using R superlearner defaults (requires randomForest package)
+                              r_sl:  R based super learner with several default learners (glm, lasso, bart, rf, mars) (requires SuperLearner package)
                               r_svm:  support vector machine regression/classification (requires e1071)
                               **** note: package installation should happen automatically when these are used for the first time
                                 if RLANG configured correctly
@@ -1157,6 +1158,7 @@ RUN;
          %IF &book=r_lasso %THEN %LET pkg=glmnet;;
          %IF &book=r_enet %THEN %LET pkg=glmnet;;
          %IF &book=r_ridge %THEN %LET pkg=glmnet;;
+         %IF &book=r_sl %THEN %LET pkg=SuperLearner;;
        %END;
        %LET rcodeb = %STR(if(!is.element(%"&pkg%", installed.packages())) install.packages(%"&pkg%", repos = %"https://cran.mtu.edu%", dependencies=TRUE));
        DATA _null_;
@@ -1248,16 +1250,16 @@ RUN;
                          method=, dist=, shuffle=, preddata=, indata=, outcoef=,outcvrisk=,outresults=,n=);
    *put some results and call summary in readable format;
    %__SLnote(%str(__printsummary: printing out summary results));
-  %IF &BY= %THEN %DO; PROC TRANSPOSE DATA = &OUTCOEF OUT=&OUTCOEF(RENAME=(_NAME_=learner col1=Coefficient));RUN; %END;
+  %IF &BY= %THEN %DO; PROC TRANSPOSE DATA = &OUTCOEF OUT=&OUTCOEF(RENAME=(_NAME_=Learner col1=Coefficient));RUN; %END;
   %ELSE %DO; 
-      PROC TRANSPOSE DATA = &OUTCOEF OUT=&OUTCOEF(RENAME=(_NAME_=learner col1=Coefficient)); BY &by; RUN;
+      PROC TRANSPOSE DATA = &OUTCOEF OUT=&OUTCOEF(RENAME=(_NAME_=Learner col1=Coefficient)); BY &by; RUN;
   %END;
   OPTIONS MERGENOBY=NOWARN;
   DATA &outresults;
-   LENGTH learner $39;
+   LENGTH Learner $39;
    MERGE &outcoef &outcvrisk(DROP=j %IF (&method ^= ADAPTRF) %THEN rename=(riskl=CVrisk););
-   learner=SUBSTR(LEARNER, 10);
-   IF learner= '' THEN learner = "Super Learner (not cross-validated)";
+   Learner=SUBSTR(Learner, 10);
+   IF Learner= '' THEN Learner = "Super learner (not cross-validated)";
   RUN;
   OPTIONS MERGENOBY=WARN;
 %MEND __noprintsummary;
@@ -1266,16 +1268,16 @@ RUN;
                          method=, dist=, shuffle=, preddata=, indata=, outcoef=,outcvrisk=,outresults=,n=);
    *put some results and call summary in readable format;
    %__SLnote(%str(__printsummary: printing out summary results));
-  %IF &BY= %THEN %DO; PROC TRANSPOSE DATA = &OUTCOEF OUT=&OUTCOEF(RENAME=(_NAME_=learner col1=Coefficient));RUN; %END;
+  %IF &BY= %THEN %DO; PROC TRANSPOSE DATA = &OUTCOEF OUT=&OUTCOEF(RENAME=(_NAME_=Learner col1=Coefficient));RUN; %END;
   %ELSE %DO; 
-      PROC TRANSPOSE DATA = &OUTCOEF OUT=&OUTCOEF(RENAME=(_NAME_=learner col1=Coefficient)); BY &by; RUN;
+      PROC TRANSPOSE DATA = &OUTCOEF OUT=&OUTCOEF(RENAME=(_NAME_=Learner col1=Coefficient)); BY &by; RUN;
   %END;
   OPTIONS MERGENOBY=NOWARN;
   DATA &outresults;
-   LENGTH learner $39;
+   LENGTH Learner $39;
    MERGE &outcoef &outcvrisk(DROP=j %IF (&method ^= ADAPTRF) %THEN rename=(riskl=CVrisk););
-   learner=SUBSTR(LEARNER, 10);
-   IF learner= '' THEN learner = "Super Learner (not cross-validated)";
+   Learner=SUBSTR(Learner, 10);
+   IF Learner= '' THEN Learner = "Super learner (not cross-validated)";
   RUN;
   %IF %__FalseCheck(&checkvalid) %THEN %LET droplib = none;
   OPTIONS MERGENOBY=WARN;
@@ -4106,6 +4108,103 @@ RUN;
 %MEND r_ridge_in; /*optional: include macro name in mend statement with [libraryname]_cn*/
 *%r_ridge_in(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
+%MACRO r_sl_cn(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+  );
+  %__SLnote(%str(R package 'SuperLearner' must be installed));;
+  DATA __sltm0016_;
+   SET &indata;
+   FORMAT &Y;
+   %IF &weight= %THEN %DO;
+     %LET weight=wwwwww;
+     wwwwww=1;
+   %END;
+   KEEP &Y &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &weight;
+  RUN;
+  FILENAME rcode TEMP; *rsubmit requires use of include statement with code from file;
+  * write R statements to file;
+  DATA _null_;
+   FILE rcode;
+   PUT 'SUBMIT y w seed/ R;';
+   PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
+   PUT 'set.seed(&seed)';
+   PUT 'library("SuperLearner")';
+   PUT 'lib = c("SL.earth", "SL.glmnet", "SL.ranger", "SL.speedlm", "SL.dbarts")';
+   PUT 'Y = mdata[,"&Y"]';
+   PUT 'X = mdata[,-grep(paste0("&y", "|", "&w"), names(mdata))]';
+   PUT 'Xfl = rdata[,-grep(paste0("&y", "|", "&w"), names(rdata))]';
+   PUT 'W = mdata[,"&w"]';
+   PUT 'rmod <- SuperLearner(Y=Y, X=X, newX=Xfl, SL.library = lib, family=gaussian(), obsWeights = W)';
+   PUT 'p_r = predict(rmod)$pred[,1]';
+   PUT 'ENDSUBMIT;';
+  RUN;
+  /*%PUT &rcode ;*/
+  PROC IML;
+   RUN ExportDataSetToR("Work.__sltm0016_", "rdata");
+   y = "&y";
+   w = "&weight";
+   seed = "&seed";
+   %INCLUDE rcode;
+   CALL ImportDatasetFromR("work.__rpreds", "p_r" );
+  QUIT;
+  OPTIONS MERGENOBY=NOWARN;
+  DATA &outdata;
+    MERGE &indata __rpreds(RENAME=(p_r = p_r_sl&SUFF));
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+  PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
+%MEND r_sl_cn; /*optional: include macro name in mend statement with [libraryname]_cn*/
+*%r_sl_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
+
+%MACRO r_sl_in(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+  );
+  %__SLnote(%str(R package 'SuperLearner' must be installed));;
+  DATA __sltm0016_;
+   SET &indata;
+   FORMAT &Y;
+   %IF &weight= %THEN %DO;
+     %LET weight=wwwwww;
+     wwwwww=1;
+   %END;
+   KEEP &Y &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &weight;
+  RUN;
+  FILENAME rcode TEMP; *rsubmit requires use of include statement with code from file;
+  * write R statements to file;
+  DATA _null_;
+   FILE rcode;
+   PUT 'SUBMIT y w seed/ R;';
+   PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
+   PUT 'set.seed(&seed)';
+   PUT 'library("SuperLearner")';
+   PUT 'lib = c("SL.earth", "SL.glmnet", "SL.ranger", "SL.speedglm", "SL.dbarts")';
+   PUT 'Y = mdata[,"&Y"]';
+   PUT 'X = mdata[,-grep(paste0("&y", "|", "&w"), names(mdata))]';
+   PUT 'Xfl = rdata[,-grep(paste0("&y", "|", "&w"), names(rdata))]';
+   PUT 'W = mdata[,"&w"]';
+   PUT 'rmod <- SuperLearner(Y=Y, X=X, newX=Xfl, SL.library = lib, family=binomial(), obsWeights = W)';
+   PUT 'p_r = predict(rmod)$pred[,1]';
+   PUT 'ENDSUBMIT;';
+  RUN;
+  /*%PUT &rcode ;*/
+  PROC IML;
+   RUN ExportDataSetToR("Work.__sltm0016_", "rdata");
+   y = "&y";
+   w = "&weight";
+   seed = "&seed";
+   %INCLUDE rcode;
+   CALL ImportDatasetFromR("work.__rpreds", "p_r" );
+  QUIT;
+  OPTIONS MERGENOBY=NOWARN;
+  DATA &outdata;
+    MERGE &indata __rpreds(RENAME=(p_r = p_r_sl&SUFF));
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+  PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
+%MEND r_sl_in; /*optional: include macro name in mend statement with [libraryname]_cn*/
+*%r_sl_in(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 ********************************************************;
 * Part 3: main functions;

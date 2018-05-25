@@ -59,7 +59,7 @@ Results: linear regression has lowest cross-validated expected loss (CVrisk), bu
 
            Super learner fit
     
-    learner    Coefficient     CVrisk
+    Learner    Coefficient     CVrisk
     
     linreg       0.82097      0.23423
     lasso        0.17903      0.26555
