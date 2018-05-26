@@ -1,8 +1,8 @@
-%PUT super learner macro v0.11.00 (pre-release 1.0);
+%PUT super learner macro v0.13.0 (pre-release 1.0);
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version:     0.11.00 (pre-release 1.0)
+* Version:     0.13.0 (pre-release 1.0)
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS (tested on sas 9.4 TS1M3)
@@ -55,11 +55,13 @@ This programs structure is:
  2018-03-20: substantial cleanup to dataset handling, basic error checking implemented
  2018-03-28: Added "method" parameter for getting coefficients, implements NNLS (R default, 
               non-negative least squares) or CCLS (convex constraint least squares), OLS (least squares)
+              NNRIDGE, CCRIDGE, RIDGE (non-negative, convex constraint ridge [L2] penalized regression)
               NNLOGLIK, CCLOGLIK, LOGLIK (non-negative, convex constraint binomial likelihood)
  2018-04-07: Added by-processing and interventions in external data
  2018-04-19: NNLAE, CCLAE, LAE (non-negative, convex constraint L1 loss function)
  2018-04-28: Added CV super learner, some additional error recovery
  2018-05-18: Enabled weighting 
+ 2018-05-56: Enabled ridge methods for super learner model 
 **********************************************************************************************************************/
 
 %LET suppresswarn = *; *set to * to turn off all warnings about the correct sas version for each proc, empty otherwise;
@@ -242,6 +244,7 @@ Future plans:
                      trimbound=0.001 ,
                      shuffle=TRUE,
                      seed=12345,
+                     slridgepen=0.3, /* ridge regression penalty for methods: RIDGE, NNRIDGE, CCRIDGE */
                      /* kid gloves */
                      runchecks=TRUE , 
                      checkvalid=TRUE,
@@ -301,6 +304,7 @@ Future plans:
                      trimbound=0.001 ,
                      shuffle=TRUE,
                      seed=12345,
+                     slridgepen=0.3, /* ridge regression penalty for methods: RIDGE, NNRIDGE, CCRIDGE */
                      /* kid gloves */
                      cvrunchecks=TRUE , 
                      cvcheckvalid=TRUE,
@@ -344,6 +348,7 @@ Future plans:
                      trimbound=0.001, /*trimming of logit variables to ensure boundedness */
                      shuffle=TRUE,    /*randomly shuffle data prior to setting CV folds*/
                      seed=,           /*seed for super learner (shuffling + learners with randomness)*/
+                     slridgepen=0.3, /* ridge regression penalty for methods: RIDGE, NNRIDGE, CCRIDGE */
                      runchecks=FALSE, /*check for missing data, proper distribution settings, case of parameter values*/
                      checkvalid=FALSE,  /*remove learners that produce missing values */
                      logreport=FALSE,   /* report useful information, e.g. SL coefficients to the sas log */
@@ -385,7 +390,7 @@ Future plans:
    %__SLwarning(%STR(no method specified, setting to default NNLS - this will be an error in the future));
    %LET method=NNLS;;
   %END;
-  %IF NOT (&method IN(NNLOGLIK CCLOGLIK NNLS CCLS OLS LS NNLAE CCLAE LAE LOGLIK AUC ADAPTRF)) %THEN %__badSLerror(%str(Method &method not recognized));
+  %IF NOT (&method IN(NNLOGLIK CCLOGLIK NNLS CCLS OLS LS NNLAE CCLAE LAE LOGLIK AUC ADAPTRF RIDGE CCRIDGE NNRIDGE)) %THEN %__badSLerror(%str(Method &method not recognized));
   %IF &method=LS %THEN %LET method=OLS;; *allow naming conventions to be followed strictly;
   * format to reverse outcome coding for some procs (e.g. probit);
   PROC FORMAT; VALUE SLrevf 1='0' 0='1';RUN; * by default models outcome = 0;
@@ -484,7 +489,7 @@ Future plans:
     %_pred_setup(Y=&Y, intvars=&intvars, indata=__sltm0013_, outdata=__sltm001_, preddata=&preddata, insample=&insample); 
     * get cross validated predictions from each learner;
     OPTIONS NOQUOTELENMAX;
-    %_getcvpreds&dist(Y=&Y, indata=__sltm001_, outdata=__sltm002_, library=&library, weight=&weight, folds=&folds);;
+    %_getcvpreds&dist(Y=&Y, indata=__sltm001_, outdata=__sltm002_, library=&library, weight=&weight, folds=&folds, seed=&slseed);;
     *get (cross-validated) risk estimates for each fold and superlearner coefficients for overall fit;
     %_sl_cvrisk(indata=__sltm002_, outdata=__sltm002_, library=&library, outcoef=&outslcoefs, risk=&risk, method=&method, outcvrisks=&outslrisks, seed=&slseed); 
     OPTIONS QUOTELENMAX;
@@ -589,6 +594,7 @@ Future plans:
                        trimbound=0.001 ,
                        shuffle=TRUE,
                        seed=12345,
+                       slridgepen=0.3, /* ridge regression penalty for methods: RIDGE, NNRIDGE, CCRIDGE */
                        /* kid gloves */
                        cvrunchecks=FALSE , 
                        cvcheckvalid=FALSE,
@@ -655,6 +661,7 @@ Future plans:
                      cleanup=&cleanup ,
                      trimbound=&trimbound ,
                      shuffle=TRUE,
+                     slridgepen=&slridgepen, /* ridge regression penalty for methods: RIDGE, NNRIDGE, CCRIDGE */
                      seed=&cvSLseed,
                      /* kid gloves */
                      runchecks=  &cvrunchecks  , 
@@ -1313,7 +1320,7 @@ RUN;
      PUT "             ordinal_predictors= &ordinal_predictors, nominal_predictors= &nominal_predictors, continuous_predictors= &continuous_predictors,";
      PUT "             indata= &indata, preddata= &preddata, outdata= &outdata, dist=&dist, ";
      PUT "             library=%str(&library), ";
-     PUT "             trtstrat=&trtstrat , folds=&folds,  method=&method, ";
+     PUT "             trtstrat=&trtstrat , folds=&folds,  method=&method, slridgepen=&slridgepen,";
      PUT "             seed=&slseed, outresults=sl_summary, printres=TRUE, timer=TRUE,"  ;   
      PUT "             quietnotes=TRUE, quietwarning=TRUE)"  ;   
    %END;
@@ -1643,38 +1650,6 @@ RUN;
 %MEND quantregint_cn;
 *%quantregint_cn( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
-%MACRO quantreg_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
-);
-  /* quantile regression model - does not respect [0,1] parameter space*/
-  PROC QUANTREG DATA = &indata;
-    FORMAT &Y;
-    ODS SELECT NONE;
-    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
-    %IF &WEIGHT^= %THEN WEIGHT &weight;;
-    MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / QUANTILE=0.5;
-    OUTPUT OUT = &OUTDATA(DROP=QUANTILE) PRED=p_quantreg&SUFF;
-  RUN;
-%MEND quantreg_in;
-*%quantreg_in( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
-
-%MACRO quantregint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
-);
-  /* quantile regression model - does not respect [0,1] parameter space */
-  PROC QUANTREG DATA = &indata ;
-    FORMAT &Y;
-    ODS SELECT NONE;
-    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
-    %IF &WEIGHT^= %THEN WEIGHT &weight;;
-    MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms / QUANTILE=0.5;
-    OUTPUT OUT = &OUTDATA(DROP=QUANTILE) PRED=p_quantregint&SUFF;
-  RUN;
-%MEND quantregint_in;
-*%quantregint_in( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
-
 %MACRO lasso_in(
                 Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
@@ -1735,7 +1710,7 @@ RUN;
 );
   %__SLwarning(%str(lassob does not resepect the 0/1 probability space and should be used with extreme caution));
   /* Logit model with LASSO  */
-  PROC GLMSELECT DATA = &indata NOPRINT;
+  PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
     FORMAT &Y;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
@@ -1805,7 +1780,7 @@ RUN;
 );
   %__SLwarning(%str(lassoint2 does not resepect the 0/1 probability space and shoudld be used with extreme caution));
   /* Logit model with LASSO - including interaction terms */
-  PROC GLMSELECT DATA = &indata NOPRINT;
+  PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
     FORMAT &Y;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
@@ -1877,7 +1852,7 @@ RUN;
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
 );
   /* linear model with LASSO  */
-  PROC GLMSELECT DATA = &indata NOPRINT;
+  PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
     FORMAT &Y;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
@@ -1902,9 +1877,9 @@ RUN;
     p_ridge&SUFF: MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors;
     *OUTPUT OUT = &OUTDATA(DROP=_RIDGE_ _TYPE_) PREDICTED=p_ridge&SUFF;
   RUN;
-  PROC SORT DATA = __sltm0017__(WHERE=(_TYPE_="RIDGE")); BY _rmse_; RUN;
-  DATA __sltm0017__; SET __sltm0017__(OBS =1); run;   
-  PROC SCORE DATA = &indata SCORE=__sltm0017__ OUT=&outdata TYPE=RIDGE;
+  PROC SORT DATA = __sltm0017_(WHERE=(_TYPE_="RIDGE")); BY _rmse_; RUN;
+  DATA __sltm0017_; SET __sltm0017_(OBS =1); run;   
+  PROC SCORE DATA = &indata SCORE=__sltm0017_ OUT=&outdata TYPE=RIDGE;
     VAR &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors;
   RUN;
 %MEND ridge_cn;
@@ -1915,17 +1890,17 @@ RUN;
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
 );
   /* ridge regression with binary data */
-  /* this does not respect the parameter space ! */
-  PROC REG DATA = &indata RIDGE=0 TO 10 by 0.05 OUTEST=__sltm0017__;
+  %__SLwarning(%str(ridge does not resepect the 0/1 probability space and should be used with extreme caution));
+  PROC REG DATA = &indata RIDGE=0 TO 10 by 0.05 OUTEST=__sltm0017_;
     FORMAT &Y;
     ODS SELECT NONE;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
-    p_lassoint&SUFF: MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors;
+    p_ridge&SUFF: MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors;
     *OUTPUT OUT = &OUTDATA(DROP=_RIDGE_ _TYPE_) PREDICTED=p_ridge&SUFF;
   RUN;
-  PROC SORT DATA = __sltm0017__(WHERE=(_TYPE_="RIDGE")); BY _rmse_; RUN;
-  DATA __sltm0017__; SET __sltm0017__(OBS =1); run;   
-  PROC SCORE DATA = &indata SCORE=__sltm0017__ OUT=&outdata TYPE=RIDGE;
+  PROC SORT DATA = __sltm0017_(WHERE=(_TYPE_="RIDGE")); BY _rmse_; RUN;
+  DATA __sltm0017_; SET __sltm0017_(OBS =1); run;   
+  PROC SCORE DATA = &indata SCORE=__sltm0017_ OUT=&outdata TYPE=RIDGE;
     VAR &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors;
   RUN;
 %MEND ridge_in;
@@ -1987,7 +1962,7 @@ RUN;
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
 );
   /* linear model with LASSO  */
-  PROC GLMSELECT DATA = &indata NOPRINT;
+  PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
     FORMAT &Y;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
@@ -2003,7 +1978,7 @@ RUN;
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
 );
   /* LASSO model, selection by cross validation */
-  PROC GLMSELECT DATA = &indata NOPRINT;
+  PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
     FORMAT &Y;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
@@ -2019,7 +1994,7 @@ RUN;
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
 );
   /* LASSO model, selection by cross validation */
-  PROC GLMSELECT DATA = &indata NOPRINT;
+  PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
     FORMAT &Y;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
@@ -2053,7 +2028,7 @@ RUN;
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
 );
   /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
-  PROC GLMSELECT DATA = &indata NOPRINT;
+  PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
     FORMAT &Y;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
@@ -2070,7 +2045,7 @@ RUN;
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
 );
   /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) with interaction terms */
-  PROC GLMSELECT DATA = &indata NOPRINT;
+  PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
     FORMAT &Y;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
@@ -2106,7 +2081,7 @@ RUN;
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
 );
   /* Elastic net model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
-  PROC GLMSELECT DATA = &indata NOPRINT;
+  PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
     FORMAT &Y;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
@@ -2123,7 +2098,7 @@ RUN;
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
 );
   /* Elastic net model, interaction terms (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
-  PROC GLMSELECT DATA = &indata NOPRINT;
+  PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
     FORMAT &Y;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
@@ -2864,9 +2839,9 @@ RUN;
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
 );
   PROC DISCRIM DATA = &indata METHOD = npar KPROP=.01 /*K = 5*/ TESTDATA=&indata 
+    TESTOUT = &outdata(DROP = _0 _into_ RENAME=(_1=p_knn&suff)) NOPRINT;
     FORMAT &Y;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
-    TESTOUT = &outdata(DROP = _0 _into_ RENAME=(_1=p_knn&suff)) NOPRINT;
     CLASS &Y;
     VAR &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors;
   RUN;
@@ -3112,7 +3087,7 @@ RUN;
   %LET rcodea = %STR(SUBMIT / r;);
   %LET rcodem = %STR(mdata = rdata[!is.na(rdata$&Y),]);
   %LET rcodei = %STR(set.seed(&seed));
-  %LET rcodeb = %STR(rfmodf <- randomForest::randomForest%(y=mdata$&Y,x=mdata[-grep(%"&Y%", names(mdata))], ntree = 1000, nodesize=5, maxnodes=NULL, xtest=rdata[-grep(%"&Y%", names(rdata))], importance=FALSE, keep.forest = FALSE, na.action = na.omit%));
+  %LET rcodeb = %STR(rfmodf <- randomForest::randomForest%(y=mdata$&Y,x=mdata[-grep(%"&Y|&weight%", names(mdata))], ntree = 1000, nodesize=5, maxnodes=NULL, xtest=rdata[-grep(%"&Y|&weight%", names(rdata))], importance=FALSE, keep.forest = FALSE, na.action = na.omit%));
   %LET rcodec = %STR(p_r_rf&SUFF <- rfmodf$test$predicted);
   %LET rcoded = %STR(ENDSUBMIT;);
   %LET rcode = &rcodea &rcodei &rcodem &rcodeb &rcodec &rcoded;
@@ -3157,7 +3132,7 @@ RUN;
   %LET rcodet = %STR(rdata$&Y = as.factor(rdata$&Y));
   %LET rcodem = %STR(mdata = rdata[!is.na(rdata$&Y),]);
   %LET rcodei = %STR(set.seed(123));
-  %LET rcodeb = %STR(rfmodf <- randomForest::randomForest%(y=mdata$&Y,x=mdata[-grep(%"&Y.|&weight%", names(mdata))], ntree = 1000, nodesize=1, maxnodes=NULL, xtest=rdata[-grep(%"&Y%", names(rdata))], importance=FALSE, keep.forest = FALSE, na.action = na.omit%));
+  %LET rcodeb = %STR(rfmodf <- randomForest::randomForest%(y=mdata$&Y,x=mdata[-grep(%"&Y.|&weight%", names(mdata))], ntree = 1000, nodesize=1, maxnodes=NULL, xtest=rdata[-grep(%"&Y|&weight%", names(rdata))], importance=FALSE, keep.forest = FALSE, na.action = na.omit%));
   %LET rcodec = %STR(p_r_rf&SUFF <- rfmodf$test$votes[,2]);
   %LET rcoded = %STR(ENDSUBMIT;);
   %LET rcode = &rcodea &rcodei &rcodem &rcodeb &rcodec &rcoded;
@@ -3433,7 +3408,7 @@ RUN;
     nbagg = 100, control = rpart::rpart.control(xval = 0, 
     maxsurrogate = 0, minsplit = 20, cp = 0.01, maxdepth = 30, weights=mdata$&weight%))
   );
-  %LET rcodec = %STR(p_r_bagging&SUFF <- predict(fit.bag, newdata = rdata[-grep(%"&Y.|&weight%", names(rdata))], type = %"prob%", aggregation = %"average%")[, 2]);
+  %LET rcodec = %STR(p_r_bagging&SUFF <- predict(rmod, newdata = rdata[-grep(%"&Y.|&weight%", names(rdata))], type = %"prob%", aggregation = %"average%")[, 2]);
   %LET rcoded = %STR(ENDSUBMIT;);
   %LET rcode = &rcodea &rcodei &rcodem &rcodeb &rcodec &rcoded;
   DATA _null_;
@@ -3517,7 +3492,7 @@ RUN;
   %LET rcodem = %STR(mdata = rdata[!is.na(rdata$&Y),]);
   %LET rcodet = %STR(rdata$&Y = as.factor(rdata$&Y));
   %LET rcodei = %STR(set.seed(&seed));
-  %LET rcodeb = %STR(emodf = polspline::polymars(mdata$&Y,mdata[,-grep(%"&Y.|&weight%", names(mdata))], cv=5, weights=mdata$&weight));
+  %LET rcodeb = %STR(emodf = polspline::polyclass(mdata$&Y,mdata[,-grep(%"&Y.|&weight%", names(mdata))], weight=mdata$&weight));
   %LET rcodec = %STR(p_r_polymars&SUFF = polspline::ppolyclass(cov = rdata[,-grep(%"&Y.|&weight%", names(rdata))], fit = emodf)[,2]);
   %LET rcoded = %STR(ENDSUBMIT;);
   %LET rcode = &rcodea &rcodei &rcodem &rcodeb &rcodec &rcoded;
@@ -3747,7 +3722,7 @@ RUN;
   %LET cts = 4;
   %LET deg = 2;
   %LET rcodea = %STR(SUBMIT / r;);
-  %LET rcodep = %STR(library(%"gam%"));
+  %LET rcodep = %STR(suppressWarnings(suppressMessages(library(%"gam%"))));
   %LET rcodem = %STR(mdata = rdata[!is.na(rdata$&Y),]);
   %LET rcodei = %STR(set.seed(&seed));
   %LET rcodea0 = %STR(X=mdata[-grep(%"&Y.|&weight%", names(mdata))]);
@@ -3755,8 +3730,8 @@ RUN;
   %LET rcodea2 = %STR(if (sum(!cts.x) > 0)  f = as.formula(paste(%"&Y~%", paste(paste0(%"gam::s(%", colnames(X[, cts.x, drop = FALSE]), %",%", &deg, %")%"), collapse = %"+%"),  %"+%", paste(colnames(X[, !cts.x, drop = FALSE]), collapse = %"+%"))));
   %LET rcodea3 = %STR(if (sum(!cts.x) == 0) f = as.formula(paste(%"&Y~%", paste(paste0(%"gam::s(%", colnames(X[, cts.x, drop = FALSE]), %",%", &deg, %")%"), collapse = %"+%"))));
   %LET rcodea4 = %STR(if (sum(!cts.x) == length(cts.x)) f = as.formula(paste0(%"&Y~%", paste(colnames(X), collapse = %"+%"))));
-  %LET rcodeb = %STR(gmod = gam::gam(f, data = mdata, family = gaussian(), control = gam::gam.control(maxit = 50, bf.maxit = 50, weights=mdata$&weight)));
-  %LET rcodec = %STR(p_r_gam&SUFF = gam::predict.Gam(gmod, newdata=rdata, type=%"response%"));
+  %LET rcodeb = %STR(suppressWarnings(suppressMessages(gmod <- gam::gam(f, data = mdata, family = gaussian(), control = gam::gam.control(maxit = 50, bf.maxit = 50, weights=mdata$&weight)))));
+  %LET rcodec = %STR(suppressWarnings(p_r_gam&SUFF <- gam::predict.Gam(gmod, newdata=rdata, type=%"response%")));
   %LET rcoded = %STR(ENDSUBMIT;);
   %LET rcode = &rcodea &rcodei &rcodem &rcodeb &rcodec &rcoded;
   DATA _null_;
@@ -3796,7 +3771,7 @@ RUN;
   %LET cts = 4;
   %LET deg = 2;
   %LET rcodea = %STR(SUBMIT / r;);
-  %LET rcodep = %STR(library(%"gam%"));
+  %LET rcodep = %STR(suppressWarnings(suppressMessages(library(%"gam%"))));
   %LET rcodem = %STR(mdata = rdata[!is.na(rdata$&Y),]);
   %LET rcodei = %STR(set.seed(&seed));
   %LET rcodea0 = %STR(X=mdata[-grep(%"&Y.|&weight%", names(mdata))]);
@@ -3804,8 +3779,8 @@ RUN;
   %LET rcodea2 = %STR(if (sum(!cts.x) > 0)  f = as.formula(paste(%"&Y~%", paste(paste0(%"gam::s(%", colnames(X[, cts.x, drop = FALSE]), %",%", &deg, %")%"), collapse = %"+%"),  %"+%", paste(colnames(X[, !cts.x, drop = FALSE]), collapse = %"+%"))));
   %LET rcodea3 = %STR(if (sum(!cts.x) == 0) f = as.formula(paste(%"&Y~%", paste(paste0(%"gam::s(%", colnames(X[, cts.x, drop = FALSE]), %",%", &deg, %")%"), collapse = %"+%"))));
   %LET rcodea4 = %STR(if (sum(!cts.x) == length(cts.x)) f = as.formula(paste0(%"&Y~%", paste(colnames(X), collapse = %"+%"))));
-  %LET rcodeb = %STR(gmod = gam::gam(f, data = mdata, family = binomial(), control = gam::gam.control(maxit = 50, bf.maxit = 50, weights=mdata$&weight)));
-  %LET rcodec = %STR(p_r_gam&SUFF = gam::predict.Gam(gmod, newdata=rdata, type=%"response%"));
+  %LET rcodeb = %STR(suppressWarnings(suppressMessages(gmod <- gam::gam(f, data = mdata, family = binomial(), control = gam::gam.control(maxit = 50, bf.maxit = 50, weights=mdata$&weight)))));
+  %LET rcodec = %STR(suppressWarnings(p_r_gam&SUFF <- gam::predict.Gam(gmod, newdata=rdata, type=%"response%")));
   %LET rcoded = %STR(ENDSUBMIT;);
   %LET rcode = &rcodea &rcodei &rcodem &rcodeb &rcodec &rcoded;
   DATA _null_;
@@ -4129,13 +4104,13 @@ RUN;
    PUT 'SUBMIT y w seed/ R;';
    PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
    PUT 'set.seed(&seed)';
-   PUT 'library("SuperLearner")';
+   PUT 'suppressWarnings(suppressMessages(library("SuperLearner")))';
    PUT 'lib = c("SL.earth", "SL.glmnet", "SL.ranger", "SL.speedlm", "SL.dbarts")';
    PUT 'Y = mdata[,"&Y"]';
    PUT 'X = mdata[,-grep(paste0("&y", "|", "&w"), names(mdata))]';
    PUT 'Xfl = rdata[,-grep(paste0("&y", "|", "&w"), names(rdata))]';
    PUT 'W = mdata[,"&w"]';
-   PUT 'rmod <- SuperLearner(Y=Y, X=X, newX=Xfl, SL.library = lib, family=gaussian(), obsWeights = W)';
+   PUT 'suppressWarnings(suppressMessages(rmod <- SuperLearner(Y=Y, X=X, newX=Xfl, SL.library = lib, family=gaussian(), obsWeights = W)))';
    PUT 'p_r = predict(rmod)$pred[,1]';
    PUT 'ENDSUBMIT;';
   RUN;
@@ -4178,13 +4153,13 @@ RUN;
    PUT 'SUBMIT y w seed/ R;';
    PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
    PUT 'set.seed(&seed)';
-   PUT 'library("SuperLearner")';
+   PUT 'suppressWarnings(suppressMessages(library("SuperLearner")))';
    PUT 'lib = c("SL.earth", "SL.glmnet", "SL.ranger", "SL.speedglm", "SL.dbarts")';
    PUT 'Y = mdata[,"&Y"]';
    PUT 'X = mdata[,-grep(paste0("&y", "|", "&w"), names(mdata))]';
    PUT 'Xfl = rdata[,-grep(paste0("&y", "|", "&w"), names(rdata))]';
    PUT 'W = mdata[,"&w"]';
-   PUT 'rmod <- SuperLearner(Y=Y, X=X, newX=Xfl, SL.library = lib, family=binomial(), obsWeights = W)';
+   PUT 'suppressWarnings(suppressMessages(rmod <- SuperLearner(Y=Y, X=X, newX=Xfl, SL.library = lib, family=binomial(), obsWeights = W)))';
    PUT 'p_r = predict(rmod)$pred[,1]';
    PUT 'ENDSUBMIT;';
   RUN;
@@ -4413,7 +4388,7 @@ RUN;
   %END;
 %MEND _selectlearnersstratGAUSSIAN;
 
-%MACRO _getcvpredsBERNOULLI(Y=, indata=, outdata=, library=, folds=, weight=);
+%MACRO _getcvpredsBERNOULLI(Y=, indata=, outdata=, library=, folds=, weight=, seed=);
   /* create cross validated predictions using members of the super learner library*/
   %__SLnote(_getcvpreds: getting overall and cross-validated predictions of &Y);
   OPTIONS NOSYNTAXCHECK;
@@ -4425,6 +4400,7 @@ RUN;
                indata=&indata, 
                outdata=&indata, 
                binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
+               seed=&seed,
                weight=&weight,
                suff=_full
     );
@@ -4436,6 +4412,7 @@ RUN;
                indata=&indata, 
                outdata=&indata, 
                binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
+               seed=&seed,
                weight=&weight,
                suff=_full
     );
@@ -4452,9 +4429,9 @@ RUN;
                  indata=&indata, 
                  outdata=&indata, 
                  binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
+                 seed=&seed,
                  weight=&weight,
-                 suff=&K
-      );
+                 suff=&K      );
     %END;
     %IF %__FalseCheck(&trtstrat) %THEN %DO;
       %_selectlearnersBERNOULLI(
@@ -4463,6 +4440,7 @@ RUN;
                  indata=&indata, 
                  outdata=&indata, 
                  binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
+                 seed=&seed,
                  weight=&weight,
                  suff=&K
       );
@@ -4478,7 +4456,7 @@ RUN;
 *%LET binary_predictors = x l;
 *%_getcvpredsBERNOULLI(Y=z,indata=__sltm001_, outdata=test_getcvpreds, library= logit rf, folds=3);
 
-%MACRO _getcvpredsGAUSSIAN(Y=,indata=, outdata=, library=, folds=, weight=);
+%MACRO _getcvpredsGAUSSIAN(Y=,indata=, outdata=, library=, folds=, weight=, seed=);
   /* create cross validated predictions using members of the super learner library*/
   %__SLnote(_getcvpreds);
   *first get overall_fit- a convex weighted combination of the predicted values from these fits will be used for the superleaner predictions;
@@ -4490,6 +4468,7 @@ RUN;
                indata=&indata, 
                outdata=&indata, 
                binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
+               seed=&seed,
                weight=&weight,
                suff=_full
     );
@@ -4501,6 +4480,7 @@ RUN;
                indata=&indata, 
                outdata=&indata, 
                binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
+               seed=&seed,
                weight=&weight,
                suff=_full
     );
@@ -4517,6 +4497,7 @@ RUN;
                  indata=&indata, 
                  outdata=&indata, 
                  binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
+                 seed=&seed,
                  weight=&weight,
                  suff=&K
       );
@@ -4528,6 +4509,7 @@ RUN;
                  indata=&indata, 
                  outdata=&indata, 
                  binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
+                 seed=&seed,
                  weight=&weight,
                  suff=&K
       );
@@ -4633,15 +4615,15 @@ RUN;
   READ DATA __sltm004_(KEEP=&Y) INTO OBS=[_N_] __y=COL("&Y");
   READ DATA __sltm004_(KEEP=__V:) INTO OBS=[_N_] {b in LIB} < libmem[_N_, b]=COL("__v"||b) >;
   *method &method;
-  %IF (&method IN(CCLS NNLS NNLOGLIK CCLOGLIK NNLAE CCLAE AUC)) %THEN %DO;
+  %IF (&method IN(CCLS NNLS NNLOGLIK CCLOGLIK NNLAE CCLAE CCRIDGE NNRIDGE AUC)) %THEN %DO;
     *positively bounded coefficients;
     VAR coef{LIB} >= 0 INIT %EVAL(1/&LIBCOUNT);;
   %END;
-  %IF (&method IN(OLS LOGLIK LAE)) %THEN %DO;
+  %IF (&method IN(OLS LOGLIK LAE RIDGE)) %THEN %DO;
     *unbounded coefficients;
     VAR coef{LIB} INIT %EVAL(1/&LIBCOUNT);;
   %END;
-  %IF (&method IN (CCLS CCLOGLIK CCLAE AUC)) %THEN %DO;
+  %IF (&method IN (CCLS CCLOGLIK CCLAE CCRIDGE AUC)) %THEN %DO;
     *convexity constraint;
     CON t: SUM{i in LIB } coef[i] = 1.0;; 
   %END;
@@ -4658,13 +4640,13 @@ RUN;
     MIN risk = 1/&SLSampSize * SUM{i IN OBS} rabs[i];
     SOLVE WITH nlp;
   %END;
-  %IF (&method IN (NNLS CCLS OLS)) %THEN %DO;
+  %IF (&method IN (NNLS CCLS OLS RIDGE CCRIDGE NNRIDGE)) %THEN %DO;
     *l2 loss function;
     IMPVAR sl_pred{i IN OBS} = SUM{j in LIB} coef[j]*libmem[i,j] ;
     * get risk for each algorithm;
     IMPVAR riskl{j in LIB} = 1/&SLSampSize * SUM{i in OBS}  __weight[i]*(__y[i] - libmem[i,j])**2;
     * minimize the cross validated risk (not equal to the super learner risk, which is a function of the learners fit to the full data);
-    MIN risk = 1/&SLSampSize * SUM{i IN OBS} __weight[i]*(__y[i] - sl_pred[i])**2;
+    MIN risk = %IF (&METHOD IN (RIDGE CCRIDGE NNRIDGE)) %THEN &slridgepen *1/&SLSampSize*(SUM{j in LIB} coef[j]**2) + ; 1/&SLSampSize * SUM{i IN OBS} __weight[i]*(__y[i] - sl_pred[i])**2 ;
     SOLVE WITH qp;
   %END;
   %IF (&method IN(NNLOGLIK CCLOGLIK LOGLIK)) %THEN %DO;
@@ -4692,13 +4674,13 @@ RUN;
     SOLVE WITH NLP / MULTISTART MSNUMSTARTS=20 HESSTYPE=PRODUCT SEED=&SEED;
   %END;
   *output sl coefficients to file;
-  %IF (&method IN(CCLS OLS CCLOGLIK LOGLIK CCLAE LAE AUC)) %THEN %DO;
+  %IF (&method IN(CCLS OLS CCLOGLIK LOGLIK CCLAE LAE AUC RIDGE CCRIDGE)) %THEN %DO;
    *unstandardized coefficients;
     CREATE DATA &OUTCOEF FROM {j in lib} <COL('__slcoef_'||j) = coef[j]>;
    %IF %__TrueCheck(&verbose) %THEN PRINT coef;;
    %IF %__TrueCheck(&verbose) %THEN PRINT riskl;;
   %END;
-  %IF (&method IN(NNLS NNLOGLIK NNLAE)) %THEN %DO;
+  %IF (&method IN(NNLS NNLOGLIK NNLAE NNRIDGE)) %THEN %DO;
    *Standardized coefficients;
    IMPVAR stdcoef{j in LIB} = coef[j]/SUM{k in LIB} coef[k];
    CREATE DATA &OUTCOEF FROM {j in lib} <COL('__slcoef_'||j) = stdcoef[j]>;
@@ -4755,27 +4737,62 @@ RUN;
   SET &inDATa ;
   %__RENAMEVARS(Y=, library=&library,suff=_full);
   %IF &method = ADAPTRF %THEN %DO;
-    PROC HPFOREST DATA = __sltm004_, seed=&SLseed  /*PRESELECT=BINNEDSEARCH SCOREPROLE=OOB MAXTREES = 100*/ ;
-     ODS SELECT NONE;
-     TARGET &Y / LEVEL = %IF &DIST=BERNOULLI %THEN binary ;%ELSE interval;;
+    PROC HPFOREST DATA = __sltm004_ seed=&SLseed  /*PRESELECT=BINNEDSEARCH SCOREPROLE=OOB MAXTREES = 100*/ ;
+      ODS SELECT NONE;
+	  FORMAT &Y;
+      %IF &WEIGHT^= %THEN FREQ &weight;; *weight possibly truncated to integer;
+      TARGET &Y / LEVEL = %IF &DIST=BERNOULLI %THEN binary ;%ELSE interval;;
       INPUT __V: / LEVEL = interval;
       SAVE FILE=adapt;
       ODS OUTPUT VariableImportance=&outcoef;
     PROC hp4score DATA = __sltm005_;
      ID _ALL_;
-     %IF &DIST=BERNOULLI %THEN SCORE FILE = adapt OUT = &outdata  (DROP = _Warn_ f_&Y I_&Y p_&Y.0 RENAME=(p_&Y.1 = p_SL_full));;
+     %IF &DIST=BERNOULLI %THEN SCORE FILE = adapt OUT = &outdata  (DROP = _Warn_  I_&Y p_&Y.0 RENAME=(p_&Y.1 = p_SL_full));;
      %IF &DIST=GAUSSIAN %THEN SCORE FILE = adapt OUT = &outdata (DROP = _Warn_  RENAME=(p_&Y = p_SL_full));;
   %END;
   DATA &outdata;
-   SET &outdata;
-   %__unRENAMEVARS(Y=, library=&library,suff=_full);
-  DATA &outcoef(KEEP=learner mse) &outrisk(DROP=MSE);
-   LENGTH learner $39;
-   J = _N_;
-   SET &outcoef (RENAME=(VARIABLE=LEARNER));
-   %__RENAMEADAPTcoefs(library=&library,suff=_full);
-  PROC TRANSPOSE DATA = &outcoef OUT=&OUTCOEF(drop=_name_); ID learner;RUN;
+    SET &outdata;
+    %__unRENAMEVARS(Y=, library=&library,suff=_full);
+  %LET wt =;
+  %IF &weight^= %THEN %LET wt= &weight *;;
+  DATA __sltm009_(KEEP = j Learner CVrisk);
+    LENGTH learner $39;
+    SET &outdata;
+    %LET L = 1;
+    %DO %WHILE(%SCAN(&LIBRARY, &L)^=);
+     %LET book = %SCAN(&LIBRARY, &L);
+       Learner = "&book";
+       j = &l; 
+       CVrisk = &wt (&Y - p_&book._full)**2;
+       OUTPUT;
+     %LET L = %EVAL(&L + 1);
+    %END; *scan l;
+  PROC SORT DATA = __sltm009_; BY j learner;
+  PROC MEANS DATA = __sltm009_ NOPRINT;
+    BY j Learner;
+    VAR CVrisk ;
+    OUTPUT OUT = &outrisk(KEEP=j CVrisk) MEAN=;
+  RUN;
+  DATA &outcoef(KEEP= J Learner col1);
+   LENGTH Learner $39;
+   SET &outcoef;
+     %LET L = 1;
+     %DO %WHILE(%SCAN(&LIBRARY, &L)^=);
+       %LET book = %SCAN(&LIBRARY, &L);
+       IF TRIM(variable) = "__v&l" THEN DO;
+         Learner = "__slcoef_&book";
+		 j = &l;
+         %IF &DIST=BERNOULLI %THEN col1 = MarginOOB;;      
+         %IF &DIST=GAUSSIAN %THEN col1 = MSEOOB;;      
+         OUTPUT;
+	   END;
+       %LET L = %EVAL(&L + 1);
+     %END; *scan l;
+   RUN;
+   PROC SORT DATA = &OUTCOEF; BY j; RUN;
+  PROC TRANSPOSE DATA = &outcoef(DROP=j) OUT=&outcoef; ID learner;RUN;
 %MEND _get_adaptive_coef;
+
 
 %MACRO _get_risk(indata=, Y=, library=, outrisk=, weight=, method=CCLS, debug=FALSE) / MINOPERATOR MINDELIMITER=' ';
  /*
@@ -4862,7 +4879,7 @@ RUN;
   * now get overall superlearner coefficients (for SL predictions); 
   * step 7 in figure 3.2 of targeted learning book;
   %IF &method=AUC %THEN %__SLWarning(%str(AUC implementation is slow and extremely fragile on this platform. Take care!));
-  %IF (&method IN(NNLOGLIK CCLOGLIK LOGLIK NNLS CCLS OLS NNLAE CCLAE LAE AUC)) %THEN
+  %IF (&method IN(NNLOGLIK CCLOGLIK LOGLIK NNLS CCLS OLS NNLAE CCLAE LAE AUC RIDGE CCRIDGE NNRIDGE)) %THEN
     %_get_coef(indata=&indata, Y=&Y, library=&library, outcoef=&outcoef, outrisk=&outcvrisks, weight=&weight, suff=, method=&method, debug=false,seed=&seed);;
   %IF (&method IN(ADAPTRF)) %THEN
     %_get_adaptive_coef(indata=&indata, outdata=&outdata, Y=&Y, library=&library, outcoef=&outcoef, outrisk=&outcvrisks, weight=&weight, suff=, method=&method, debug=FALSE);;
@@ -4892,14 +4909,14 @@ RUN;
     %IF %__FalseCheck(&insample) %THEN %DO;
        IF __train=0 THEN &Y = _&Y;
     %END;
-    %IF (&method IN(NNLOGLIK CCLOGLIK LOGLIK NNLS CCLS OLS NNLAE CCLAE LAE AUC)) %THEN %DO;
+    %IF (&method IN(NNLOGLIK CCLOGLIK LOGLIK NNLS CCLS OLS NNLAE CCLAE LAE ADAPTRF AUC RIDGE CCRIDGE NNRIDGE)) %THEN %DO;
       %LET L = 1;
       %DO %WHILE(%SCAN(&LIBRARY, &L)^=);
         %LET book = %SCAN(&LIBRARY, &L);
         %IF %EVAL(&SL_dslidx=&L) %THEN p_dSL_full = p_&book._full;;
         LABEL p_&book._full = "&book prediction";
         LABEL p_&book._z = "&book prediction (fold specific)";
-        %IF (&method IN (NNLS CCLS OLS NNLAE CCLAE LAE AUC)) %THEN %DO;
+        %IF (&method IN (NNLS CCLS OLS NNLAE CCLAE LAE AUC RIDGE CCRIDGE NNRIDGE)) %THEN %DO;
              p_SL_full  =   SUM(p_SL_full, __slcoef_&book*p_&book._full); *overall superlearner estimate with cross validated coefficients;
         %END;
         %IF (&method IN (NNLOGLIK CCLOGLIK LOGLIK)) %THEN %DO;
@@ -4937,7 +4954,7 @@ RUN;
       %LET L = %EVAL(&L + 1);
      %END;
     %END;
-    %IF (&method IN (NNLS CCLS OLS)) %THEN %DO;
+    %IF (&method IN (NNLS CCLS OLS ADAPTRF RIDGE CCRIDGE NNRIDGE)) %THEN %DO;
      %LET L = 1;
      %DO %WHILE(%SCAN(&LIBRARY, &L)~=);
       %LET book = %SCAN(&LIBRARY, &L);
@@ -5031,7 +5048,7 @@ RUN;
       order = 2; 
       OUTPUT;
     %END;
-    %ELSE %IF (&method IN (NNLS CCLS OLS ADAPTRF)) %THEN %DO;
+    %ELSE %IF (&method IN (NNLS CCLS OLS ADAPTRF NNRIDGE CCRIDGE RIDGE)) %THEN %DO;
       CVrisk = &wt (&Y - p_SL_full)**2;
       learner = "super learner";
       order = 1; 
@@ -5061,7 +5078,7 @@ RUN;
          CVrisk = &wt ABS(&Y - p_&book._full);
          OUTPUT;
        %END;
-       %ELSE %IF (&method IN (NNLS CCLS OLS ADAPTRF)) %THEN %DO;
+       %ELSE %IF (&method IN (NNLS CCLS OLS ADAPTRF NNRIDGE CCRIDGE RIDGE)) %THEN %DO;
          CVrisk = &wt (&Y - p_&book._full)**2;
          OUTPUT;
        %END;
