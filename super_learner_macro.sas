@@ -1,8 +1,8 @@
-%PUT super learner macro v0.13.0 (pre-release 1.0);
+%PUT super learner macro v0.13.1 (pre-release 1.0);
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version:     0.13.0 (pre-release 1.0)
+* Version:     0.13.1 (pre-release 1.0)
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS (tested on sas 9.4 TS1M3)
@@ -1870,12 +1870,11 @@ RUN;
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
 );
   /* ridge regression with linear model only */
-  PROC REG DATA = &indata RIDGE=0 TO 10 by 0.05 OUTEST=__sltm0017__;
+  PROC REG DATA = &indata RIDGE=0 TO 10 by 0.05 OUTEST=__sltm0017_;
     FORMAT &Y;
     ODS SELECT NONE;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     p_ridge&SUFF: MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors;
-    *OUTPUT OUT = &OUTDATA(DROP=_RIDGE_ _TYPE_) PREDICTED=p_ridge&SUFF;
   RUN;
   PROC SORT DATA = __sltm0017_(WHERE=(_TYPE_="RIDGE")); BY _rmse_; RUN;
   DATA __sltm0017_; SET __sltm0017_(OBS =1); run;   
@@ -1896,7 +1895,6 @@ RUN;
     ODS SELECT NONE;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     p_ridge&SUFF: MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors;
-    *OUTPUT OUT = &OUTDATA(DROP=_RIDGE_ _TYPE_) PREDICTED=p_ridge&SUFF;
   RUN;
   PROC SORT DATA = __sltm0017_(WHERE=(_TYPE_="RIDGE")); BY _rmse_; RUN;
   DATA __sltm0017_; SET __sltm0017_(OBS =1); run;   
