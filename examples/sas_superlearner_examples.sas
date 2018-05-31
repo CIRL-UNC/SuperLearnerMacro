@@ -5,7 +5,7 @@
 * Project: super learning in the sas system
 * Description: coding of some examples using the macro from the paper: 
 	Keil, AP. Super Learning in the SAS system. ArXiv. 2018
-Below are three macros that carry out super learner prediction
+Below are several macros that demonstrate use of super learner macro
   test_bernoulli_int: simple confounding problem - predicting potential outcomes
   test_gaussian_int: example with continuous variable
   test_slnewlearner: example demonstrating how to introduce a new/custom learner
