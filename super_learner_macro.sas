@@ -1,8 +1,8 @@
-%PUT super learner macro v0.13.4 (pre-release 1.0);
+%PUT super learner macro v0.13.6 (pre-release 1.0);
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version:     0.13.4 (pre-release 1.0)
+* Version:     0.13.6 (pre-release 1.0)
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS (tested on sas 9.4 TS1M3)
@@ -171,7 +171,7 @@ method=NNLS,              * fitting approach to estimate coefficients for super 
                             OLS/LS methods use an L2 loss function (least squares)
                             LOGLIK methods use a loss function corresponding to the binomial likelihood with a logit
                               link function
-                            LAE methods [experimental] use an L1 loss function (least absolute error), which will not penalize 
+                            LAE methods use an L1 loss function (least absolute error), which will not penalize 
                               outliers as much as L2 methods, and is also non-differentiable at the minimum
                               which may cause computational difficulties
                             AUC method also exists for binary outcomes, but current implementation is slow and fails frequently 
@@ -514,6 +514,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
     %IF %__TrueCheck(&logreport) %THEN %_cvriskreport(indata=&outdata, library=&library);; 
   %MEND _main;
   %IF &by ^= %THEN %DO;
+    %LOCAL byj bylevs;
     %__CLEANUP(%str(&outdata, &outslcoefs, &outslrisks));
     %IF %SCAN(&by, 2)^= %THEN %__badSLerror(%str("by" statement only supports one by variable));
     PROC SQL NOPRINT; SELECT COUNT(DISTINCT &by) INTO :bylevs FROM &indata; QUIT;
@@ -621,6 +622,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
                        quietnotes=FALSE,
                        timer=TRUE);
   OPTIONS NONOTES;
+  %LOCAL CVSLV cvSLseed;
   %LET cvSLseed = %EVAL(&SEED);
   %IF &cvSLseed= %THEN %DO;
     DATA _NULL_;
@@ -729,6 +731,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
 * Part 1: helper functions;
 ********************************************************;
 %MACRO _mkmethods();
+  %LOCAL ncutoffs;
   %LET ncutoffs = 500; * number of cutoff points for approximate AUC calculation;
   PROC FCMP OUTLIB = work.__funcs.LOGFUNCS;
   FUNCTION AUC(coef[*], label[*], preds[*,*]) VARARGS;
@@ -883,6 +886,7 @@ RUN;
 %MEND __deprecations;
 
 %MACRO __commonerrors(dummy=1) / MINOPERATOR MINDELIMITER=' ';
+  %LOCAL l_l j_j _ic book;  
   %__SLnote(%str(Basic error checking));
   * missing parameter values;
   %IF &Y = AND &predvar =  %THEN %__badSLerror(must specify Y);
@@ -898,13 +902,13 @@ RUN;
   *check that stratified models are specified correctly;
   %IF %__TrueCheck(&trtstrat) %THEN %DO;
     %IF (&INTVARS=) %THEN %__badSLerror(Intervention variable (macro variable 'intvars') must be specified if trtstrat is TRUE);;
-    %LET J=1;
-    %LET ic = 0;
-    %DO %WHILE (%SCAN(&PREDICTORS, &J)^=);
-      %IF %SCAN(&PREDICTORS, &J) IN &INTVARS %THEN %LET ic = 1;
-      %LET J=%EVAL(&J+1);
+    %LET j_j=1;
+    %LET _ic = 0;
+    %DO %WHILE (%SCAN(&PREDICTORS, &j_j)^=);
+      %IF %SCAN(&PREDICTORS, &j_j) IN &INTVARS %THEN %LET _ic = 1;
+      %LET j_j=%EVAL(&j_j+1);
     %END;
-    %IF &ic = 0 %THEN %__badSLerror(Intervention variables must also be specified as predictors);;
+    %IF &_ic = 0 %THEN %__badSLerror(Intervention variables must also be specified as predictors);;
   %END;
   * screw up binary/continuous specification;
   %IF %__TrueCheck(&SLPBinary) %THEN %DO;
@@ -938,39 +942,41 @@ RUN;
   %LET SLsas92 = %EVAL(&sysver>9.1);
   %IF &SLsas94=0 %THEN %DO;
     __SLwarning(Using version of SAS < 9.4, be aware that some procs may not work as intended!);
-    %LET L = 1;
-    %DO %WHILE(%SCAN(&LIBRARY, &L)^=);
-      %LET book=%SCAN(&LIBRARY, &L);
+    %LET l_l = 1;
+    %DO %WHILE(%SCAN(&LIBRARY, &l_l)^=);
+      %LET book=%SCAN(&LIBRARY, &l_l);
       %IF (&book=cart OR &book=cvcart OR &book=rf OR &book=rfoob OR &book=gampl OR &book=lasso) %THEN %DO;
         %IF &SLsas93=0 %THEN %__badSLerror(you are using one member of the library that does not work in this version of sas. Please respecify the library without rf, cart, or lasso.);
         %IF (&SLsas94=0 AND &book=lasso) %THEN %__badSLerror(Please respecify the library without lasso (it does not work in this version of sas).);
       %END;
-    %LET L = %EVAL(&L + 1);
+    %LET l_l = %EVAL(&l_l + 1);
     %END; *scan l;
   %END;
 %MEND;
 
 %MACRO __Checklibrary(library);
-  *check whether member of library exists;   
-  %LET L = 1;
+  *check whether member of library exists; 
+  %LOCAL l_l book;  
+  %LET l_l = 1;
   %__SLnote(%str(Checking whether library (&library) is valid));
-  %DO %WHILE(%SCAN(&LIBRARY, &L)^=);
-    %LET book=%SCAN(&LIBRARY, &L);
+  %DO %WHILE(%SCAN(&LIBRARY, &l_l)^=);
+    %LET book=%SCAN(&LIBRARY, &l_l);
       %IF (&dist=GAUSSIAN AND %SYSMACEXIST(&book._cn)=0) OR (&dist=BERNOULLI AND %SYSMACEXIST(&book._in)=0) %THEN
         %__badSLerror(Library member &book is not available for the &dist distribution. You might try "rf" "boost" "bagging" or "mars");
-  %LET L = %EVAL(&L + 1);
+  %LET l_l = %EVAL(&l_l + 1);
   %END; *scan l;
 %MEND __CheckLibrary;
 
 %MACRO __CheckMissing(predictors, indata);
   *check for missing values;
-  %LET j = 1;
-  %DO %WHILE(%SCAN(&predictors, %EVAL(&j))^=);
-    %LET PRED = %SCAN(&predictors, &j);
+  %LOCAL j_j _pred pmis;
+  %LET j_j = 1;
+  %DO %WHILE(%SCAN(&predictors, %EVAL(&j_j))^=);
+    %LET _PRED = %SCAN(&predictors, &j_j);
     PROC SQL NOPRINT; 
-     SELECT SUM((&PRED<.z)) INTO :pmis FROM &INDATA;
-    %IF %SYSEVALF(%TRIM(&pmis)>0) %THEN %__badSLerror(Missing values detected in &pred.. Missing values in predictors are not yet handled in this macro. Please ensure that input data are free of missing values.);;
-    %LET j = &j+1;
+     SELECT SUM((&_PRED<.z)) INTO :pmis FROM &INDATA;
+    %IF %SYSEVALF(%TRIM(&pmis)>0) %THEN %__badSLerror(Missing values detected in &_pred.. Missing values in predictors are not yet handled in this macro. Please ensure that input data are free of missing values.);;
+    %LET j_j = %EVAL(&j_j+1);
   %END;
   QUIT;
 %MEND __CheckMissing;
@@ -991,6 +997,7 @@ RUN;
    check that intvar is removed from predictor variables if trstrat is used
    allows identical specification of models for trstrat = true and false 
   */
+  %LCOAL bp cp np op __p;
   %LET bp = ;
   %LET cp = ;
   %LET np = ;
@@ -1026,6 +1033,7 @@ RUN;
   %__SLnote(__ValidLib);
   %SYMDEL validlib droplib / NOWARN;
   %GLOBAL validlib droplib;
+  %LOCAL fullmiss cvmiss __j;
   %LET valdilib =; 
   %LET droplib =;
   %LET __j = 1;
@@ -1051,6 +1059,7 @@ RUN;
 %MEND __ValidLib;
 
 %MACRO __cleanup(ds);
+  %LOCAL dcode nd ds cd;
   * remove temporary datasets: to be moved to end of macro;
   * first overwrite to prevent warning about table not existing in some cases;
   DATA __d; a=1; RUN;
@@ -1075,6 +1084,7 @@ RUN;
 %MACRO __SLPBinary(ds, YVAR);
   * determine whether superlearner should run in binary or non-binary mode;
   %GLOBAL SLPBinary;
+  %LOCAL ycount;
   PROC SQL NOPRINT;  SELECT COUNT(DISTINCT &YVAR) INTO :ycount FROM &DS; QUIT;
      %IF %SYSEVALF(%TRIM(&ycount)=2) %THEN %LET SLPBinary=TRUE;
      %ELSE %LET SLPBinary=FALSE;
@@ -1084,88 +1094,92 @@ RUN;
 %MACRO __makeintx(bins = ,  others = );
   *make interaction terms
   %GLOBAL SLIXterms;
+  %LOCAL j_j k_k p_p q_q allvars;
   %LET allvars = &bins &others;
   %LET SLIXterms = ;
-  %LET J=1;
-  %DO %WHILE (%SCAN(&bins, &j)^=);
-    %LET k=%EVAL(&j+1);
-    %LET p = %SCAN(&bins, &j);
-    %DO %WHILE (%SCAN(&bins, &k)^=);
-      %LET q = %SCAN(&bins, &k);
-      %IF &p^=&q %THEN %LET SLIXterms = &SLIXterms &p*&q;
-      %LET k=%EVAL(&k+1);
+  %LET j_j=1;
+  %DO %WHILE (%SCAN(&bins, &j_j)^=);
+    %LET k_k=%EVAL(&j_j+1);
+    %LET p_p = %SCAN(&bins, &j_j);
+    %DO %WHILE (%SCAN(&bins, &k_k)^=);
+      %LET q_q = %SCAN(&bins, &k_k);
+      %IF &p_p^=&q_q %THEN %LET SLIXterms = &SLIXterms &p_p*&q_q;
+      %LET k_k=%EVAL(&k_k+1);
     %END;
-   %LET j=%EVAL(&j+1);
+   %LET j_j=%EVAL(&j_j+1);
   %END;
-  %LET J=1;
-  %DO %WHILE (%SCAN(&allvars, &j)^=);
-    %LET k=1;
-    %LET p = %SCAN(&allvars, &J);
-    %DO %WHILE (%SCAN(&others, &k)^=);
-      %LET q = %SCAN(&others, &k);
-      %LET SLIXterms = &SLIXterms &p*&q;
+  %LET j_j=1;
+  %DO %WHILE (%SCAN(&allvars, &j_j)^=);
+    %LET k_k=1;
+    %LET p_p = %SCAN(&allvars, &j_j);
+    %DO %WHILE (%SCAN(&others, &k_k)^=);
+      %LET q_q = %SCAN(&others, &k_k);
+      %LET SLIXterms = &SLIXterms &p_p*&q_q;
       %LET k=%EVAL(&k+1);
     %END;
-   %LET j=%EVAL(&j+1);
+   %LET j_j=%EVAL(&j_j+1);
   %END;
 %MEND;
 *%__makeintx(bins = &binary_predictors,  others = &ordinal_predictors &nominal_predictors &continuous_predictors);
 
 %MACRO __installR(package);
+  %LOCAL _pkg;
   /* note: this function can be called directly to install an R package where sas will find it */
   %__SLnote(%STR(__installR: Installing R packages if necessary. ));
   %LET rinst=FALSE;
    FILENAME instcode TEMP; *rsubmit requires use of include statement with code from file;
    %LET rcodea = %STR(SUBMIT / r;);
    %LET rcodec = %STR(ENDSUBMIT;);
-   %LET L = 1;
-   %DO %WHILE(%SCAN(&LIBRARY, &L)^=);
-     %LET book=%SCAN(&LIBRARY, &L);
+   %LET l_l = 1;
+   %DO %WHILE(%SCAN(&LIBRARY, &l_l)^=);
+     %LET book=%SCAN(&LIBRARY, &l_l);
      %IF %SUBSTR(&book, 1,2)=r_ %THEN %DO;
        %IF &rinst=FALSE %THEN %__SLnote(%str(R needs to be installed and Rlang system option must be enabled in SAS. See http://support.sas.com/documentation/cdl/en/imlug/64248/HTML/default/viewer.htm#r_toc.htm for details.));
        %LET rinst=TRUE;
-       %LET pkg = &package;
-       %IF &pkg= %THEN %DO;
-         %IF &book=r_rf %THEN %LET pkg=randomForest;;
-         %IF &book=r_bart %THEN %LET pkg=dbarts;;
-         %IF &book=r_mars %THEN %LET pkg=earth;;
-         %IF &book=r_bagging %THEN %LET pkg=ipred;;
-         %IF &book=r_polymars %THEN %LET pkg=polspline;;
-         %IF &book=r_boost %THEN %LET pkg=xgboost;;
-         %IF &book=r_svm %THEN %LET pkg=e1071;;
-         %IF &book=r_dsa %THEN %LET pkg=partDSA;;
-         %IF &book=r_gam %THEN %LET pkg=gam;;
-         %IF &book=r_lasso %THEN %LET pkg=glmnet;;
-         %IF &book=r_enet %THEN %LET pkg=glmnet;;
-         %IF &book=r_ridge %THEN %LET pkg=glmnet;;
-         %IF &book=r_sl %THEN %LET pkg=SuperLearner;;
+       %LET _pkg = &package;
+       %IF &_pkg= %THEN %DO;
+         %IF &book=r_rf %THEN %LET _pkg=randomForest;;
+         %IF &book=r_bart %THEN %LET _pkg=dbarts;;
+         %IF &book=r_mars %THEN %LET _pkg=earth;;
+         %IF &book=r_bagging %THEN %LET _pkg=ipred;;
+         %IF &book=r_polymars %THEN %LET _pkg=polspline;;
+         %IF &book=r_boost %THEN %LET _pkg=xgboost;;
+         %IF &book=r_svm %THEN %LET _pkg=e1071;;
+         %IF &book=r_dsa %THEN %LET _pkg=partDSA;;
+         %IF &book=r_gam %THEN %LET _pkg=gam;;
+         %IF &book=r_lasso %THEN %LET _pkg=glmnet;;
+         %IF &book=r_enet %THEN %LET _pkg=glmnet;;
+         %IF &book=r_ridge %THEN %LET _pkg=glmnet;;
+         %IF &book=r_sl %THEN %LET _pkg=SuperLearner;;
        %END;
-       %LET rcodeb = %STR(if(!is.element(%"&pkg%", installed.packages())) install.packages(%"&pkg%", repos = %"https://cran.mtu.edu%", dependencies=TRUE));
+       %LET rcodeb = %STR(if(!is.element(%"&_pkg%", installed.packages())) install.packages(%"&_pkg%", repos = %"https://cran.mtu.edu%", dependencies=TRUE));
        DATA _null_;
         FILE instcode;
         PUT "&rcodea";PUT "&rcodeb";PUT "&rcodec";
        RUN;
        PROC IML;
-        %IF &pkg^= %THEN %INCLUDE instcode;;
+        %IF &_pkg^= %THEN %INCLUDE instcode;;
        QUIT;
      %END; *any r func;
-    %LET L = %EVAL(&L + 1);
+    %LET l_l = %EVAL(&l_l + 1);
    %END; *scan l;
 %MEND __installR;
 
 * special functions for gam;
 
 %MACRO __gamspline(vars, degree);
- %LET gamI = 1;
- %DO %WHILE (%SCAN(&vars, &gami)~=);
-  %LET __gamv = %SCAN(&vars, &gami);
-  /*%__SLnote(%str((GAM) Creating spline for &__gamv))*/
-   SPLINE(&__gamV, DF=&DEGREE)
-  %LET gamI = %EVAL(&gami + 1);
- %END;
+  %LOCAL gami __gamv;
+  %LET gamI = 1;
+  %DO %WHILE (%SCAN(&vars, &gami)~=);
+    %LET __gamv = %SCAN(&vars, &gami);
+    /*%__SLnote(%str((GAM) Creating spline for &__gamv))*/
+    SPLINE(&__gamV, DF=&DEGREE)
+    %LET gamI = %EVAL(&gami + 1);
+  %END;
 %MEND;
 
 %MACRO __gamdrop(vars);
+  %LOCAL gami __gamv;
   DROP =
   %LET gamI = 1;
   %DO %WHILE (%SCAN(&vars, &gami)~=);
@@ -1176,6 +1190,7 @@ RUN;
 %MEND;
 
 %MACRO __nndrop(vars);
+  %LOCAL gami __gamv;
   DROP =
   %LET gamI = 1;
   %DO %WHILE (%SCAN(&vars, &gami)~=);
@@ -1186,6 +1201,7 @@ RUN;
 %MEND;
 
 %MACRO __gamplspline(vars, degree);
+  %LOCAL gami __gamv;
   %LET gamI = 1;
   %DO %WHILE (%SCAN(&vars, &gami)~=);
     %LET __gamv = %SCAN(&vars, &gami);
@@ -1197,6 +1213,7 @@ RUN;
 %MEND;
 
 %MACRO __PBSPLINE(vars, df);
+  %LOCAL pbi __pbv;
   %LET pbI = 1;
   %DO %WHILE (%SCAN(&vars, &pbi)~=);
     %LET __pbv = %SCAN(&vars, &pbi);
@@ -1207,6 +1224,7 @@ RUN;
 %MEND __PBSPLINE;
 
 %MACRO __SPLINE(vars, df);
+  %LOCAL pbi __pbv;
   %LET pbI = 1;
   %DO %WHILE (%SCAN(&vars, &pbi)~=);
     %LET __pbv = %SCAN(&vars, &pbi);
@@ -1217,6 +1235,7 @@ RUN;
 %MEND __SPLINE;
 
 %MACRO __IDENT(vars, df);
+  %LOCAL pbi __pbv;
   %LET pbI = 1;
   %DO %WHILE (%SCAN(&vars, &pbi)~=);
     %LET __pbv = %SCAN(&vars, &pbi);
@@ -4187,6 +4206,7 @@ RUN;
    b) expand input dataset to estimate counterfactual distributions
   */
   %__SLnote(_intsetup);
+  %LOCAL i_i __intvar __int __fullints;
   %IF %__TrueCheck(&insample) %THEN %DO;
     DATA &outdata;
       SET &indata;
@@ -4197,17 +4217,17 @@ RUN;
       %IF %SCAN(&intvars,  %EVAL(1))~= %THEN %DO; 
         ARRAY &y.__CV__[&folds];
         *intervention variables are specified;
-        %LET int = 1;
-        %LET fullints = %str(0 1);
-        %DO %WHILE(%SCAN(&fullints, &int)^=);
+        %LET __int = 1;
+        %LET __fullints = %str(0 1);
+        %DO %WHILE(%SCAN(&__fullints, &__int)^=);
           *loop over interventions;
           __train = 0;
-          __int=%SCAN(&fullints, &int);
-          %LET _I = 1;
-          %DO %WHILE(%SCAN(&intvars,  %EVAL(&_I))~=);
-            %LET intvar = %SCAN(&intvars,  %EVAL(&_I));
-            &intvar = __int;
-          %LET _I = %EVAL(1+&_I);
+          __int=%SCAN(&__fullints, &__int);
+          %LET i_i = 1;
+          %DO %WHILE(%SCAN(&intvars,  %EVAL(&i_i))~=);
+            %LET __intvar = %SCAN(&intvars,  %EVAL(&i_i));
+            &__intvar = __int;
+          %LET i_i = %EVAL(1+&i_i);
           %END;
           &Y = .; *set to missing so that this will not contribute to model fit;
           %IF %EVAL(&FOLDS>1) %THEN %DO;
@@ -4217,7 +4237,7 @@ RUN;
           %END;
           DROP k;
           OUTPUT;
-          %LET int = %EVAL(&int + 1);
+          %LET __int = %EVAL(&__int + 1);
         %END;
       %END;*intvars;
     RUN;
@@ -4236,27 +4256,27 @@ RUN;
       IF ina THEN DO; 
           __int=.o; *observed;
           __train = 1;
-          __intgroup = "Training set";
+          __intgroup = "Training set           ";
       END;
       IF inb THEN DO;
         __train = 0;
         __int=.t; *testing;
-          __intgroup = "Testing set ";
+        __intgroup = "Testing/validation set ";
       END;
       OUTPUT;
       %IF %SCAN(&intvars,  %EVAL(1))~= %THEN %DO; 
         *intervention variables are specified;
-        %LET int = 1;
-        %LET fullints = %str(0 1);
-        %DO %WHILE(%SCAN(&fullints, &int)^=);
+        %LET __int = 1;
+        %LET __fullints = %str(0 1);
+        %DO %WHILE(%SCAN(&__fullints, &__int)^=);
           *loop over interventions;
           __train = 0;
-          __int=%SCAN(&fullints, &int);
-          %LET _I = 1;
-          %DO %WHILE(%SCAN(&intvars,  %EVAL(&_I))~=);
-            %LET intvar = %SCAN(&intvars,  %EVAL(&_I));
+          __int=%SCAN(&__fullints, &__int);
+          %LET i_i = 1;
+          %DO %WHILE(%SCAN(&intvars,  %EVAL(&i_i))~=);
+            %LET __intvar = %SCAN(&intvars,  %EVAL(&i_i));
             &intvar = __int;
-          %LET _I = %EVAL(1+&_I);
+          %LET i_i = %EVAL(1+&i_i);
           %END;
           &Y = .; *set to missing so that this will not contribute to model fit;
           %IF %EVAL(&FOLDS>1) %THEN %DO;
@@ -4266,7 +4286,7 @@ RUN;
           %END;
           DROP k;
           OUTPUT;
-          %LET int = %EVAL(&int + 1);
+          %LET __int = %EVAL(&__int + 1);
         %END;
       %END;*intvars;
     RUN;
@@ -4282,13 +4302,14 @@ RUN;
 );
 
  %__SLnote(_selectlearnersBERNOULLI);
-  %LET L = 1;
-  %DO %WHILE(%SCAN(&library, &L)~=);
-    %LET call = %SCAN(&library, &L);
+  %LOCAL l_l call;
+  %LET l_l = 1;
+  %DO %WHILE(%SCAN(&library, &l_l)~=);
+    %LET call = %SCAN(&library, &l_l);
     %IF %__Truecheck(&printlearner) %THEN %PUT &call;
     %&call._in(Y=&Y,indata=&indata,outdata=&outdata,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&SLseed);
     %IF %EVAL(&syserr>6) %THEN %DO; %PUT Errors occurred in super learner; DATA &outdata; SET &OUTDATA; p_&call&suff = .m; RUN;%END;
-    %LET L = %EVAL(&L + 1);
+    %LET l_l = %EVAL(&l_l + 1);
   %END;
 
 %MEND _selectlearnersBERNOULLI;
@@ -4300,13 +4321,14 @@ RUN;
 );
 
  %__SLnote(_selectlearnersGAUSSIAN);
-  %LET L = 1;
-  %DO %WHILE(%SCAN(&library, &L)~=);
-    %LET call = %SCAN(&library, &L);
+  %LOCAL l_l call;
+  %LET l_l = 1;
+  %DO %WHILE(%SCAN(&library, &l_l)~=);
+    %LET call = %SCAN(&library, &l_l);
     %IF %__Truecheck(&printlearner) %THEN %PUT &call;
     %&call._cn(Y=&Y,indata=&indata,outdata=&outdata,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&SLseed);
     %IF %EVAL(&syserr>6) %THEN %DO; %PUT Errors occurred in super learner; DATA &outdata; SET &OUTDATA; p_&call&suff = .m; RUN;%END;
-    %LET L = %EVAL(&L + 1);
+    %LET l_l = %EVAL(&l_l + 1);
   %END;
 
 %MEND _selectlearnersGAUSSIAN;
@@ -4318,16 +4340,17 @@ RUN;
 );
 
  %__SLnote(_selectlearnersstratBERNOULLI);
-  %LET L = 1;
-  %DO %WHILE(%SCAN(&library, &L)~=);
-    %LET call = %SCAN(&library, &L);
+  %LOCAL l_l call;
+  %LET l_l = 1;
+  %DO %WHILE(%SCAN(&library, &l_l)~=);
+    %LET call = %SCAN(&library, &l_l);
     %IF %__Truecheck(&printlearner) %THEN %PUT &call;
     %&call._in(Y=&Y,indata=&indata(WHERE=(%SCAN(&INTVARS, 1)=1)),outdata=&outdata.1,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&SLseed);
     %IF %EVAL(&syserr>6) %THEN %DO; %PUT Errors occurred in super learner; DATA &outdata; SET &OUTDATA; p_&call&suff = .m; RUN;%END;
     %&call._in(Y=&Y,indata=&indata(WHERE=(%SCAN(&INTVARS, 1)=0)),outdata=&outdata.0,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&SLseed);
     %IF %EVAL(&syserr>6) %THEN %DO; %PUT Errors occurred in super learner; DATA &outdata; SET &OUTDATA; p_&call&suff = .m; RUN;%END;
     DATA &outdata; SET &outdata.0 &outdata.1; RUN;
-    %LET L = %EVAL(&L + 1);
+    %LET l_l = %EVAL(&l_l + 1);
   %END;
 %MEND _selectlearnersstratBERNOULLI;
 
@@ -4338,21 +4361,23 @@ RUN;
 );
  
   %__SLnote(_selectlearnersstratGAUSSIAN);
-  %LET L = 1;
-  %DO %WHILE(%SCAN(&library, &L)~=);
-    %LET call = %SCAN(&library, &L);
+  %LOCAL l_l call;
+  %LET l_l = 1;
+  %DO %WHILE(%SCAN(&library, &l_l)~=);
+    %LET call = %SCAN(&library, &l_l);
     %IF %__Truecheck(&printlearner) %THEN %PUT &call;
     %&call._cn(Y=&Y,indata=&indata(WHERE=(%SCAN(&INTVARS, 1)=1)),outdata=&outdata.1,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&SLseed);
     %IF %EVAL(&syserr>6) %THEN %DO; %PUT Errors occurred in super learner; DATA &outdata; SET &OUTDATA; p_&call&suff = .m; RUN;%END;
     %&call._cn(Y=&Y,indata=&indata(WHERE=(%SCAN(&INTVARS, 1)=0)),outdata=&outdata.0,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&SLseed);
     %IF %EVAL(&syserr>6) %THEN %DO; %PUT Errors occurred in super learner; DATA &outdata; SET &OUTDATA; p_&call&suff = .m; RUN;%END;
     DATA &outdata; SET &outdata.0 &outdata.1; RUN;
-    %LET L = %EVAL(&L + 1);
+    %LET l_l = %EVAL(&l_l + 1);
   %END;
 %MEND _selectlearnersstratGAUSSIAN;
 
 %MACRO _getcvpredsBERNOULLI(Y=, indata=, outdata=, library=, folds=, weight=, seed=);
   /* create cross validated predictions using members of the super learner library*/
+  %LOCAL k_k;
   %__SLnote(_getcvpreds: getting overall and cross-validated predictions of &Y);
   OPTIONS NOSYNTAXCHECK;
   *first get overall_fit;
@@ -4381,9 +4406,9 @@ RUN;
     );
   %END;
   %__SLnote(Getting CV-fold specific predictions in full data from each learner); 
-  %LET k=0;
-  %DO %WHILE (&k < &folds);
-    %LET k = %EVAL(&k + 1);
+  %LET k_k=0;
+  %DO %WHILE (&k_k < &folds);
+    %LET k_k = %EVAL(&k_k + 1);
     %IF %__truecheck(&printfolds) %THEN %PUT Fold &k of &folds;;
     %IF %__TrueCheck(&trtstrat) %THEN %DO;
       %_selectlearnersstratBERNOULLI(
@@ -4394,7 +4419,7 @@ RUN;
                  binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
                  seed=&seed,
                  weight=&weight,
-                 suff=&K      );
+                 suff=&k_k      );
     %END;
     %IF %__FalseCheck(&trtstrat) %THEN %DO;
       %_selectlearnersBERNOULLI(
@@ -4405,7 +4430,7 @@ RUN;
                  binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
                  seed=&seed,
                  weight=&weight,
-                 suff=&K
+                 suff=&k_k
       );
     %END;
     OPTIONS SYNTAXCHECK;
@@ -4421,6 +4446,7 @@ RUN;
 
 %MACRO _getcvpredsGAUSSIAN(Y=,indata=, outdata=, library=, folds=, weight=, seed=);
   /* create cross validated predictions using members of the super learner library*/
+  %LOCAL k_k;
   %__SLnote(_getcvpreds);
   *first get overall_fit- a convex weighted combination of the predicted values from these fits will be used for the superleaner predictions;
   %__SLnote(Getting predictions in full data from each learner);
@@ -4449,9 +4475,9 @@ RUN;
     );
   %END;
   %__SLnote(Getting CV-fold specific predictions in full data from each learner); 
-  %LET k=0;
-  %DO %WHILE (&k < &folds);
-    %LET k = %EVAL(&k + 1);
+  %LET k_k=0;
+  %DO %WHILE (&k_k < &folds);
+    %LET k_k = %EVAL(&k_k + 1);
     %IF %__truecheck(&printfolds) %THEN %PUT Fold &k of &folds;;
     %IF %__TrueCheck(&trtstrat) %THEN %DO;
       %_selectlearnersstratGAUSSIAN(
@@ -4462,7 +4488,7 @@ RUN;
                  binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
                  seed=&seed,
                  weight=&weight,
-                 suff=&K
+                 suff=&k_k
       );
     %END;
     %IF %__FalseCheck(&trtstrat) %THEN %DO;
@@ -4474,7 +4500,7 @@ RUN;
                  binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
                  seed=&seed,
                  weight=&weight,
-                 suff=&K
+                 suff=&k_k
       );
     %END;
   %END;
@@ -4486,12 +4512,13 @@ RUN;
 *%_getcvpredsBERNOULLI(Y=z,indata=__sltm001_, outdata=test_getcvpreds, library= logit rf, folds=3);
 
 %MACRO _libcount(library);
- %LET _L = 1;
- %DO %WHILE(%SCAN(&library,  %EVAL(&_L))^=);
-   %LET _L = %EVAL(&_L+1);
+  %LOCAL l_l ;
+  %LET l_l = 1;
+ %DO %WHILE(%SCAN(&library,  %EVAL(&l_l))^=);
+   %LET l_l = %EVAL(&l_l+1);
  %END;
- %LET _L = %EVAL(&L-1);
- &_L
+ %LET l_l = %EVAL(&l_l-1);
+ &l_l
 %MEND _libcount;
 
 %MACRO __RENAMEVARS(Y=, library=, suff=);
@@ -4499,11 +4526,12 @@ RUN;
      to facilitate proc optmodel statements
   */
   %__SLnote(__RENAMEVARS);
-  %LET L = 1;
+  %LOCAL l_l ;
+  %LET l_l = 1;
   RENAME 
-  %DO %WHILE(%SCAN(&library, &L)^=);
-    p_%SCAN(&library, &L)&SUFF =  __v&l
-    %LET L = %EVAL(1+&L);
+  %DO %WHILE(%SCAN(&library, &l_l)^=);
+    p_%SCAN(&library, &l_l)&SUFF =  __v&l_l
+    %LET l_l = %EVAL(1+&l_l);
   %END;;
 %MEND __RENAMEVARS;
 
@@ -4511,11 +4539,12 @@ RUN;
   /* reverses __renamevars macro
   */
   %__SLnote(__unRENAMEVARS);
-  %LET L = 1;
+  %LOCAL l_l ;
+  %LET l_l = 1;
   RENAME 
-  %DO %WHILE(%SCAN(&library, &L)^=);
-    __v&l = p_%SCAN(&library, &L)&SUFF
-    %LET L = %EVAL(1+&L);
+  %DO %WHILE(%SCAN(&library, &l_l)^=);
+    __v&l_l = p_%SCAN(&library, &l_l)&SUFF
+    %LET l_l = %EVAL(1+&l_l);
   %END;;
 %MEND __unRENAMEVARS;
 
@@ -4524,12 +4553,13 @@ RUN;
     to facilitate proc optmodel statements
  */
 %__SLnote(__RENAMEcoefs);
- %LET L = 1;
+ %LOCAL l_l return;
+ %LET l_l = 1;
  %LET return = ;
  RENAME
- %DO %WHILE(%SCAN(&library, &L)^=);
-    __slcoef_&l = __slcoef_%SCAN(&library, &L)&SUFF
-  %LET L = %EVAL(1+&L);
+ %DO %WHILE(%SCAN(&library, &l_l)^=);
+    __slcoef_&l_l = __slcoef_%SCAN(&library, &l_l)&SUFF
+  %LET l_l = %EVAL(1+&l_l);
  %END;;
 %MEND __RENAMEcoefs;
 
@@ -4538,10 +4568,11 @@ RUN;
     to facilitate proc optmodel statements
  */
 %__SLnote(__RENAMEADAPTcoefs);
- %LET L = 1;
- %DO %WHILE(%SCAN(&library, &L)^=);
-    IF UPCASE(learner) = "__V&l" THEN learner = "__slcoef_%SCAN(&library, &L)&SUFF";
-  %LET L = %EVAL(1+&L);
+ %LOCAL l_l ;
+ %LET l_l = 1;
+ %DO %WHILE(%SCAN(&library, &l_l)^=);
+    IF UPCASE(learner) = "__V&l_l" THEN learner = "__slcoef_%SCAN(&library, &l_l)&SUFF";
+  %LET l_l = %EVAL(1+&l_l);
  %END;
 %MEND __RENAMEADAPTcoefs;
 
@@ -4592,7 +4623,7 @@ RUN;
   %END;
   %IF (&method IN (NNLAE CCLAE LAE)) %THEN %DO;
     *l1 loss function;
-    %__SLWarning(%STR(Method &method - L1 Loss function- is experimental. Use caution.));
+    *%__SLWarning(%STR(Method &method - L1 Loss function- is experimental. Use caution.));
     IMPVAR sl_pred{i IN OBS} = SUM{j in LIB} coef[j]*libmem[i,j] ;
     * get risk for each algorithm;
     IMPVAR riskl{j in LIB} = 1/&SLSampSize * SUM{i in OBS}  ABS(__y[i] - libmem[i,j]);
@@ -5272,4 +5303,5 @@ OPTIONS NOMPRINT;
   2018-05-14: fully implemented weights for all sas procedures
   2018-05-18: fully implemented weights for all R procedures
   2018-05-20: added r learners: lasso, enet, ridge (from glmnet)
+  2018-05-31: improved macro variable scoping
 **********************************************************************************************************************/
