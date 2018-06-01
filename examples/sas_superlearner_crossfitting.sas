@@ -28,7 +28,8 @@ FILENAME slgh URL "https://cirl-unc.github.io/SuperLearnerMacro/super_learner_ma
   LENGTH id x l 3;
   CALL STREAMINIT(1192887);
   *observed data;
-   DO id = 1 TO 5000;
+  n2 = 250;
+   DO id = 1 TO n2*2;
     py0_true = RAND("uniform")*0.1 + 0.4;  
     l = RAND("bernoulli", 1/(1+exp(-1 + py0_true)));
     c = RAND("normal", py0_true, 1);
@@ -39,8 +40,8 @@ FILENAME slgh URL "https://cirl-unc.github.io/SuperLearnerMacro/super_learner_ma
     rd_true = 0.1;
     y = RAND("bernoulli",  py);
     OUTPUT a;
-    IF id <= 500 THEN OUTPUT a1;
-    IF id > 500 THEN OUTPUT a2;
+    IF id <= n2 THEN OUTPUT a1;
+    IF id > n2 THEN OUTPUT a2;
    END;
   RUN;
 
@@ -54,21 +55,6 @@ FILENAME slgh URL "https://cirl-unc.github.io/SuperLearnerMacro/super_learner_ma
                 method=NNLOGLIK, 
                 dist=BERNOULLI 
   );
-
-PROC MEANS DATA = sl_gc NOPRINT;
- CLASS __INT;
- VAR p_sl_full;
- OUTPUT OUT = gf MEAN=py/;
-run;
-DATA gf (KEEP=py0 py1 rd);
- SET gf END=lobs;
- RETAIN py0 py1 rd;
- IF __int=0 THEN py0 = py;
- IF __int=1 THEN py1 = py;
- rd = py1-py0;
- IF lobs THEN OUTPUT;
-RUN;
-
 * now with IPW;
   %SuperLearner(Y=x,
                 x= l c c2,
@@ -78,40 +64,6 @@ RUN;
                 method=NNLOGLIK, 
                 dist=BERNOULLI 
   );
-
-DATA sl_ipw;
- SET sl_ipw;
- ps = p_sl_full;
- ipw = x/p_sl_full + (1-x)/(1-p_sl_full);
-
-
-
-
-* now with AIPW;
-DATA gc_ (KEEP=ID py0_GF py1_GF py);
- SET sl_gc(keep=id __int p_sl_full);
- BY id;
- RETAIN py0_GF py1_GF py;
- IF __INT=0 then py0_GF = p_sl_full;
- IF __INT=1 then py1_GF = p_sl_full;
- IF __INT<.z then py = p_sl_full;
- IF last.id THEN OUTPUT;
-RUN;
-
-DATA AIPW;
- MERGE gc_ sl_ipw;
- BY id;
-    mu1_ipw = (y*x/ps);
-    mu0_ipw = (y*(1-x)/(1-ps));
-    * augmentation terms for AIPW;
-    a1_aipw = (x-ps)/ps*py1_gf;
-    a0_aipw = ((1-x)-(1-ps))/(1-ps)*py0_gf;
-	py1_aipw = mu1_ipw - a1_aipw;
-	py0_aipw = mu0_ipw - a0_aipw;
-	rd_aipw = py1_aipw - py0_aipw;
-RUN;
-
-
 
 *using cross-fit to get estimate;
   %SuperLearner(Y=y,
@@ -153,37 +105,27 @@ RUN;
                 method=NNLOGLIK, 
                 dist=BERNOULLI 
   );
-
-DATA sl_gcCF;
- SET sl_gc1(WHERE=(__train=0)) sl_gc2(WHERE=(__train=0));
-RUN;
-  
-PROC MEANS DATA = sl_gcCF NOPRINT;
+PROC MEANS DATA = sl_gc NOPRINT;
  CLASS __INT;
  VAR p_sl_full;
- OUTPUT OUT = gfCF MEAN=py/;
+ OUTPUT OUT = gf MEAN=py/;
 run;
-DATA gfCF (KEEP=py0 py1 rd);
- SET gfCF END=lobs;
+DATA gf (KEEP=py0 py1 rd);
+ SET gf END=lobs;
  RETAIN py0 py1 rd;
  IF __int=0 THEN py0 = py;
  IF __int=1 THEN py1 = py;
  rd = py1-py0;
  IF lobs THEN OUTPUT;
 RUN;
-
-  
-DATA sl_ipwcf;
- SET sl_ipw1(WHERE=(__train=0)) sl_ipw2(WHERE=(__train=0));
+DATA sl_ipw;
+ SET sl_ipw;
  ps = p_sl_full;
  ipw = x/p_sl_full + (1-x)/(1-p_sl_full);
 
-
-
-
 * now with AIPW;
-DATA gc_cf (KEEP=ID py0_GF py1_GF py);
- SET sl_gccf(keep=id __int p_sl_full);
+DATA gc_ (KEEP=ID py0_GF py1_GF py);
+ SET sl_gc(keep=id __int p_sl_full);
  BY id;
  RETAIN py0_GF py1_GF py;
  IF __INT=0 then py0_GF = p_sl_full;
@@ -191,10 +133,54 @@ DATA gc_cf (KEEP=ID py0_GF py1_GF py);
  IF __INT<.z then py = p_sl_full;
  IF last.id THEN OUTPUT;
 RUN;
+DATA AIPW;
+ MERGE gc_ sl_ipw;
+    mu1_ipw = (y*x/ps);
+    mu0_ipw = (y*(1-x)/(1-ps));
+    * augmentation terms for AIPW;
+    a1_aipw = (x-ps)/ps*py1_gf;
+    a0_aipw = ((1-x)-(1-ps))/(1-ps)*py0_gf;
+	py1_aipw = mu1_ipw - a1_aipw;
+	py0_aipw = mu0_ipw - a0_aipw;
+	rd_aipw = py1_aipw - py0_aipw;
+RUN;
+
+*cross fit aipw;
+DATA sl_ipwcf;
+  SET sl_ipw1 sl_ipw2;
+  ps = p_sl_full;
+  ipw = x/p_sl_full + (1-x)/(1-p_sl_full);
+PROC SORT DATA = sl_ipwcf;
+  BY DESCENDING __intgroup id;
+PROC SORT DATA = sl_gc1; BY  __intgroup id;
+PROC SORT DATA = sl_gc2; BY  __intgroup id;
+PROC SORT DATA = sl_ipwcf; BY DESCENDING __TRAIN id;
+DATA gc1 (KEEP=ID py0_GF py1_GF py __intgroup );
+ SET sl_gc1(keep=id __train __intgroup __int p_sl_full);
+ BY  __intgroup id ;
+ RETAIN py0_GF py1_GF py;
+ IF __INT=0 then py0_GF = p_sl_full;
+ IF __INT=1 then py1_GF = p_sl_full;
+ IF __INT<.z then py = p_sl_full;
+ IF last.id THEN OUTPUT;
+RUN;
+DATA gc2 (KEEP=ID py0_GF py1_GF py __intgroup);
+ SET sl_gc2(keep=id __train __intgroup __int p_sl_full);
+ BY  __intgroup id ;
+ RETAIN py0_GF py1_GF py;
+ IF __INT=0 then py0_GF = p_sl_full;
+ IF __INT=1 then py1_GF = p_sl_full;
+ IF __INT<.z then py = p_sl_full;
+ IF last.id THEN OUTPUT;
+RUN;
+DATA sl_gcCF;
+  SET gc1 gc2;
+PROC SORT DATA = sl_gcCF;
+  BY __intgroup id;
+RUN;
 
 DATA AIPWcf;
- MERGE gc_cf sl_ipwcf;
- BY id;
+ MERGE sl_gccf sl_ipwcf;
     mu1_ipw = (y*x/ps);
     mu0_ipw = (y*(1-x)/(1-ps));
     * augmentation terms for AIPW;
@@ -206,7 +192,7 @@ DATA AIPWcf;
 RUN;
 
 
-
+* printing results;
 PROC PRINT DATA = gf;
   TITLE 'G COMPUTATION';
 RUN;
@@ -222,23 +208,16 @@ PROC MEANS DATA = aipw MEAN;
  TITLE 'AIPW';
  VAR mu0_ipw mu1_ipw py1_aipw py0_aipw rd_aipw;
 RUN;
-PROC PRINT DATA = gfCF;
-  TITLE 'G COMPUTATION, cross fit';
+PROC MEANS DATA = aipwcf MEAN;
+CLASS __train;
+ TITLE 'AIPW, cross fit';
+ VAR  py0_aipw py1_aipw rd_aipw;
 RUN;
-PROC GENMOD DATA = sl_ipwcf DESCENDING;
- TITLE "IPW, cross fit";
- ODS SELECT geeemppest;
- CLASS ID;
- WEIGHT ipw;
- MODEL y = x / D=B LINK=ID;
- REPEATED SUBJECT=id / TYPE=ind;
-run;
 PROC MEANS DATA = aipwcf MEAN;
  TITLE 'AIPW, cross fit';
- VAR py1_aipw py0_aipw rd_aipw;
+ VAR  py0_aipw py1_aipw rd_aipw;
 RUN;
-
 PROC MEANS DATA = a MEAN;
  TITLE 'TRUTH';
- VAR py0_true py1_true rd_true;
+ VAR  py0_true py1_true rd_true;
 RUN;
