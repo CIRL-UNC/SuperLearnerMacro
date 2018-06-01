@@ -23,12 +23,16 @@ OPTIONS FORMCHAR = '|----|+|---+=|-/\<>*';
 FILENAME slgh URL "https://cirl-unc.github.io/SuperLearnerMacro/super_learner_macro.sas";
 %INCLUDE slgh;
 
-
+%MACRO crossfit(iter);
+DATA cfests; A=1; run;
+PROC SQL; DROP TABLE cfests;quit;
+%LET jj = 1;
+%DO %WHILE(%EVAL(&jj<=&iter));
   DATA a a1 a2;
   LENGTH id x l 3;
-  CALL STREAMINIT(1192887);
+  CALL STREAMINIT(&JJ);
   *observed data;
-  n2 = 250;
+   n2 = 200;
    DO id = 1 TO n2*2;
     py0_true = RAND("uniform")*0.1 + 0.4;  
     l = RAND("bernoulli", 1/(1+exp(-1 + py0_true)));
@@ -46,6 +50,7 @@ FILENAME slgh URL "https://cirl-unc.github.io/SuperLearnerMacro/super_learner_ma
   RUN;
 
 * first with just g-computation;
+  ODS LISTING CLOSE;
   %SuperLearner(Y=y,
                 intvars=x,
                 x= x l c c2,
@@ -110,12 +115,12 @@ PROC MEANS DATA = sl_gc NOPRINT;
  VAR p_sl_full;
  OUTPUT OUT = gf MEAN=py/;
 run;
-DATA gf (KEEP=py0 py1 rd);
+DATA gf (KEEP= gf);
  SET gf END=lobs;
- RETAIN py0 py1 rd;
+ RETAIN py0 py1 gf;
  IF __int=0 THEN py0 = py;
  IF __int=1 THEN py1 = py;
- rd = py1-py0;
+ gf = py1-py0;
  IF lobs THEN OUTPUT;
 RUN;
 DATA sl_ipw;
@@ -192,10 +197,7 @@ DATA AIPWcf;
 RUN;
 
 
-* printing results;
-PROC PRINT DATA = gf;
-  TITLE 'G COMPUTATION';
-RUN;
+* combining results;
 PROC GENMOD DATA = sl_ipw DESCENDING;
  TITLE "IPW";
  ODS SELECT geeemppest;
@@ -203,21 +205,53 @@ PROC GENMOD DATA = sl_ipw DESCENDING;
  WEIGHT ipw;
  MODEL y = x / D=B LINK=ID;
  REPEATED SUBJECT=id / TYPE=ind;
+ ODS OUTPUT geeemppest=ip(where=(parm='x') rename=(ESTIMATE=ipw));
 run;
-PROC MEANS DATA = aipw MEAN;
+PROC MEANS DATA = aipw NOPRINT;
  TITLE 'AIPW';
- VAR mu0_ipw mu1_ipw py1_aipw py0_aipw rd_aipw;
-RUN;
-PROC MEANS DATA = aipwcf MEAN;
-CLASS __train;
+ VAR rd_aipw;
+ OUTPUT OUT = ai(DROP=_:) MEAN=aipw;
+PROC MEANS DATA = aipwcf NOPRINT;
  TITLE 'AIPW, cross fit';
- VAR  py0_aipw py1_aipw rd_aipw;
+ VAR rd_aipw;
+ OUTPUT OUT = aicf(DROP=_:) MEAN=aipw_cf;
 RUN;
-PROC MEANS DATA = aipwcf MEAN;
- TITLE 'AIPW, cross fit';
- VAR  py0_aipw py1_aipw rd_aipw;
-RUN;
-PROC MEANS DATA = a MEAN;
+PROC MEANS DATA = a NOPRINT;
  TITLE 'TRUTH';
- VAR  py0_true py1_true rd_true;
+ VAR  rd_true;
+ OUTPUT OUT = tr(DROP=_:) MEAN=tr;
 RUN;
+
+DATA ests;
+ MERGE gf ip(KEEP=IPW) ai aicf tr;
+RUN;
+PROC APPEND DATA=ests BASE=cfests;RUN;
+ODS LISTING;
+%LET jj = %EVAL(&jj+1);
+%END;
+%MEND;
+
+
+%CROSSFIT(iter=2);
+
+
+PROC MEANS DATA = cfests;
+  TITLE "All results";
+RUN;
+
+All results
+
+
+/*
+Results for 100 runs
+The MEANS Procedure
+
+Variable      N            Mean         Std Dev         Minimum         Maximum
+-------------------------------------------------------------------------------
+gf          100       0.0719801       0.0645197      -0.0519762       0.2406824
+ipw         100       0.1001787       0.0658309      -0.0665165       0.3040189
+aipw        100       0.0989559       0.0668827      -0.0607338       0.2980105
+aipw_cf     100       0.1051217       0.0748453      -0.0695988       0.3228299
+tr          100       0.1000000               0       0.1000000       0.1000000
+-------------------------------------------------------------------------------
+*/
