@@ -1115,7 +1115,7 @@ RUN;
     %DO %WHILE (%SCAN(&others, &k_k)^=);
       %LET q_q = %SCAN(&others, &k_k);
       %LET SLIXterms = &SLIXterms &p_p*&q_q;
-      %LET k=%EVAL(&k+1);
+      %LET k_k=%EVAL(&k_k+1);
     %END;
    %LET j_j=%EVAL(&j_j+1);
   %END;
@@ -4409,11 +4409,11 @@ RUN;
   %LET k_k=0;
   %DO %WHILE (&k_k < &folds);
     %LET k_k = %EVAL(&k_k + 1);
-    %IF %__truecheck(&printfolds) %THEN %PUT Fold &k of &folds;;
+    %IF %__truecheck(&printfolds) %THEN %PUT Fold &k_k of &folds;;
     %IF %__TrueCheck(&trtstrat) %THEN %DO;
       %_selectlearnersstratBERNOULLI(
                  library=&library,
-                 Y=&y.__CV__&k,
+                 Y=&y.__CV__&k_k,
                  indata=&indata, 
                  outdata=&indata, 
                  binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
@@ -4424,7 +4424,7 @@ RUN;
     %IF %__FalseCheck(&trtstrat) %THEN %DO;
       %_selectlearnersBERNOULLI(
                  library=&library,
-                 Y=&y.__CV__&k,
+                 Y=&y.__CV__&k_k,
                  indata=&indata, 
                  outdata=&indata, 
                  binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
@@ -4478,11 +4478,11 @@ RUN;
   %LET k_k=0;
   %DO %WHILE (&k_k < &folds);
     %LET k_k = %EVAL(&k_k + 1);
-    %IF %__truecheck(&printfolds) %THEN %PUT Fold &k of &folds;;
+    %IF %__truecheck(&printfolds) %THEN %PUT Fold &k_k of &folds;;
     %IF %__TrueCheck(&trtstrat) %THEN %DO;
       %_selectlearnersstratGAUSSIAN(
                  library=&library,
-                 Y=&y.__CV__&k,
+                 Y=&y.__CV__&k_k,
                  indata=&indata, 
                  outdata=&indata, 
                  binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
@@ -4494,7 +4494,7 @@ RUN;
     %IF %__FalseCheck(&trtstrat) %THEN %DO;
       %_selectlearnersGAUSSIAN(
                  library=&library,
-                 Y=&y.__CV__&k,
+                 Y=&y.__CV__&k_k,
                  indata=&indata, 
                  outdata=&indata, 
                  binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
@@ -4701,16 +4701,16 @@ RUN;
     %__SLnote(Learner specific risks: N=&SLSampSize);
     DATA _NULL_; 
       SET &outcvrisks;
-      %LET L = 1;
-      %DO %WHILE(%SCAN(&LIBRARY, &L)~=);
-        IF j = &L THEN CALL SYMPUT("cvrisk&l", PUT(riskl, BEST9.));
-        %LET L = %EVAL(1+&L);
+      %LET l_l = 1;
+      %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
+        IF j = &l_l THEN CALL SYMPUT("cvrisk&l_l", PUT(riskl, BEST9.));
+        %LET l_l = %EVAL(1+&l_l);
       %END;;
     RUN;
-    %LET L = 1;
-    %DO %WHILE(%SCAN(&library, &L)~=);
-      %__SLnote(Fold specific/overall %SCAN(&library, &L) risk: %TRIM(&&cvrisk&l).);
-      %LET L = %EVAL(1+&L);
+    %LET l_l = 1;
+    %DO %WHILE(%SCAN(&library, &l_l)~=);
+      %__SLnote(Fold specific/overall %SCAN(&library, &l_l) risk: %TRIM(&&cvrisk&l_l).);
+      %LET l_l = %EVAL(1+&l_l);
     %END;;
   %END; 
   %IF %__TrueCheck(&verbose) %THEN %DO; ODS SELECT NONE;%END;
@@ -4751,14 +4751,14 @@ RUN;
   DATA __sltm009_(KEEP = j Learner CVrisk);
     LENGTH learner $39;
     SET &outdata;
-    %LET L = 1;
-    %DO %WHILE(%SCAN(&LIBRARY, &L)^=);
-     %LET book = %SCAN(&LIBRARY, &L);
+    %LET l_l = 1;
+    %DO %WHILE(%SCAN(&LIBRARY, &l_l)^=);
+     %LET book = %SCAN(&LIBRARY, &l_l);
        Learner = "&book";
-       j = &l; 
+       j = &l_l; 
        CVrisk = &wt (&Y - p_&book._full)**2;
        OUTPUT;
-     %LET L = %EVAL(&L + 1);
+     %LET l_l = %EVAL(&l_l + 1);
     %END; *scan l;
   PROC SORT DATA = __sltm009_; BY j learner;
   PROC MEANS DATA = __sltm009_ NOPRINT;
@@ -4769,18 +4769,18 @@ RUN;
   DATA &outcoef(KEEP= J Learner col1);
    LENGTH Learner $39;
    SET &outcoef;
-     %LET L = 1;
-     %DO %WHILE(%SCAN(&LIBRARY, &L)^=);
-       %LET book = %SCAN(&LIBRARY, &L);
-       IF TRIM(variable) = "__v&l" THEN DO;
+     %LET l_l = 1;
+     %DO %WHILE(%SCAN(&LIBRARY, &l_l)^=);
+       %LET book = %SCAN(&LIBRARY, &l_l);
+       IF TRIM(variable) = "__v&l_l" THEN DO;
          Learner = "__slcoef_&book";
-		 j = &l;
+		 j = &l_l;
          %IF &DIST=BERNOULLI %THEN col1 = MarginOOB;;      
          %IF &DIST=GAUSSIAN %THEN col1 = MSEOOB;;      
          OUTPUT;
 	   END;
-       %LET L = %EVAL(&L + 1);
-     %END; *scan l;
+       %LET l_l = %EVAL(&l_l + 1);
+     %END; *scan l_l;
    RUN;
    PROC SORT DATA = &OUTCOEF; BY j; RUN;
   PROC TRANSPOSE DATA = &outcoef(DROP=j) OUT=&outcoef; ID learner;RUN;
@@ -4793,18 +4793,18 @@ RUN;
   %__SLnote(_sl_cvrisk: calculate cross validated risk for each algorithm and minimize cross validate risk to estimate coefficients);
   DATA &indata;
    SET &indata;
-   %LET k=0;
-   %DO %WHILE (&k < &folds);
-    %LET k = %EVAL(&k + 1);
-     %LET L = 1;
-     %DO %WHILE(%SCAN(&LIBRARY, &L)^=);
-      %LET book = %SCAN(&LIBRARY, &L);
-      p_&book._z = SUM(p_&book._z, (1-__cv&k)*p_&book&k); * compiling learner specific cross validated predictions;
-      DROP p_&book&k ;
-      %LET L = %EVAL(&L + 1);
+   %LET k_k=0;
+   %DO %WHILE (&k_k < &folds);
+    %LET k_k = %EVAL(&k_k + 1);
+     %LET l_l = 1;
+     %DO %WHILE(%SCAN(&LIBRARY, &l_l)^=);
+      %LET book = %SCAN(&LIBRARY, &l_l);
+      p_&book._z = SUM(p_&book._z, (1-__cv&k_k)*p_&book&k_k); * compiling learner specific cross validated predictions;
+      DROP p_&book&k_k ;
+      %LET l_l = %EVAL(&l_l + 1);
      %END; *scan l;
-      DROP &y.__CV__&k;
-    %END; *k;
+      DROP &y.__CV__&k_k;
+    %END; *k_k;
   RUN;
    * get fold specific coefficients (this step is unnecessary and may be cut out, but will yield fold specific risks);
   %IF %__TrueCheck(&getfoldrisks) %THEN %DO;
@@ -4850,10 +4850,10 @@ RUN;
        IF __train=0 THEN &Y = _&Y;
     %END;
     %IF (&method IN(NNLOGLIK CCLOGLIK LOGLIK NNLS CCLS OLS NNLAE CCLAE LAE ADAPTRF AUC RIDGE CCRIDGE NNRIDGE)) %THEN %DO;
-      %LET L = 1;
-      %DO %WHILE(%SCAN(&LIBRARY, &L)^=);
-        %LET book = %SCAN(&LIBRARY, &L);
-        %IF %EVAL(&SL_dslidx=&L) %THEN p_dSL_full = p_&book._full;;
+      %LET l_l = 1;
+      %DO %WHILE(%SCAN(&LIBRARY, &l_l)^=);
+        %LET book = %SCAN(&LIBRARY, &l_l);
+        %IF %EVAL(&SL_dslidx=&l_l) %THEN p_dSL_full = p_&book._full;;
         LABEL p_&book._full = "&book prediction";
         LABEL p_&book._z = "&book prediction (fold specific)";
         %IF (&method IN (NNLS CCLS OLS NNLAE CCLAE LAE AUC RIDGE CCRIDGE NNRIDGE)) %THEN %DO;
@@ -4863,7 +4863,7 @@ RUN;
           *only gives the logit probabilities;
           p_lslcv  = (SUM(p_lslcv, __slcoef_&book*LOGITBOUND(p_&book._full, &TRIMBOUND, 1-&TRIMBOUND))); *overall superlearner estimate with cross validated coefficients;
         %END;
-        %LET L = %EVAL(&L + 1);
+        %LET l_l = %EVAL(&l_l + 1);
       %END; *scan l;
       %IF (&method IN (NNLOGLIK CCLOGLIK LOGLIK)) %THEN %DO;
         p_SL_full = EXPIT(p_lslcv);
@@ -4887,48 +4887,48 @@ RUN;
   DATA __sltm003_(KEEP=risk: );
     SET &indata(WHERE=(__int=.o)) END = __eof;
     %IF (&method IN (NNLAE CCLAE LAE)) %THEN %DO;
-     %LET L = 1;
-     %DO %WHILE(%SCAN(&LIBRARY, &L)~=);
-      %LET book = %SCAN(&LIBRARY, &L);
+     %LET l_l = 1;
+     %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
+      %LET book = %SCAN(&LIBRARY, &l_l);
       RETAIN risk_&book 0 ;
       risk_&book = risk_&book + (ABS(&Y - p_&book._z))/&SLSampSize ;
-      %LET L = %EVAL(&L + 1);
+      %LET l_l = %EVAL(&l_l + 1);
      %END;
     %END;
     %IF (&method IN (NNLS CCLS OLS ADAPTRF RIDGE CCRIDGE NNRIDGE)) %THEN %DO;
-     %LET L = 1;
-     %DO %WHILE(%SCAN(&LIBRARY, &L)~=);
-      %LET book = %SCAN(&LIBRARY, &L);
+     %LET l_l = 1;
+     %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
+      %LET book = %SCAN(&LIBRARY, &l_l);
       RETAIN risk_&book 0 ;
       risk_&book = risk_&book + ((&Y - p_&book._z)**2)/&SLSampSize ;
-      %LET L = %EVAL(&L + 1);
+      %LET l_l = %EVAL(&l_l + 1);
      %END;
     %END;
     %IF (&method IN(NNLOGLIK CCLOGLIK LOGLIK)) %THEN %DO;
-     %LET L = 1;
-     %DO %WHILE(%SCAN(&LIBRARY, &L)~=);
-      %LET book = %SCAN(&LIBRARY, &L);
+     %LET l_l = 1;
+     %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
+      %LET book = %SCAN(&LIBRARY, &l_l);
       RETAIN risk_&book 0;
       risk_&book = risk_&book + (&Y*LOG(MAX(MIN(p_&book._z, 1-&TRIMBOUND), &TRIMBOUND)) + (1-&Y)*LOG(1-MAX(MIN(p_&book._z, 1-&TRIMBOUND), &TRIMBOUND)))/&SLSampSize ;
-      %LET L = %EVAL(&L + 1);
+      %LET l_l = %EVAL(&l_l + 1);
      %END;
     %END;
     IF __eof THEN OUTPUT;
   DATA _NULL_; 
     SET __sltm003_;
-     %LET L = 1;
-     %DO %WHILE(%SCAN(&LIBRARY, &L)~=);
-      %LET book = %SCAN(&LIBRARY, &L);
-       CALL SYMPUT ("r&l", PUT(risk_&book, BEST9.));
-      %LET L = %EVAL(&L + 1);
+     %LET l_l = 1;
+     %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
+      %LET book = %SCAN(&LIBRARY, &l_l);
+       CALL SYMPUT ("r&l_l", PUT(risk_&book, BEST9.));
+      %LET l_l = %EVAL(&l_l + 1);
      %END;
   RUN;
   %__SLnote(Cross validated Super Learner risk: (unavailable without further cross-validation)); 
-  %LET L = 1;
-  %DO %WHILE(%SCAN(&LIBRARY, &L)~=);
-     %LET book = %SCAN(&LIBRARY, &L);
-     %__SLnote(Cross validated %SCAN(&library, &L) risk: %TRIM(&&r&l));
-    %LET L = %EVAL(&L + 1);
+  %LET l_l = 1;
+  %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
+     %LET book = %SCAN(&LIBRARY, &l_l);
+     %__SLnote(Cross validated %SCAN(&library, &l_l) risk: %TRIM(&&r&l_l));
+    %LET l_l = %EVAL(&l_l + 1);
   %END;
 %MEND _cvriskreport;
 *%LET Y= y;
@@ -4992,12 +4992,12 @@ RUN;
       order = 2; 
       OUTPUT;
     %END;
-    %LET L = 1;
-    %DO %WHILE(%SCAN(&LIBRARY, &L)^=);
-     %LET book = %SCAN(&LIBRARY, &L);
+    %LET l_l = 1;
+    %DO %WHILE(%SCAN(&LIBRARY, &l_l)^=);
+     %LET book = %SCAN(&LIBRARY, &l_l);
        Coefficient = __slcoef_&book;
        learner = "&book";
-       order = &l+2;      
+       order = &l_l+2;      
        %IF (&method IN (NNLAE CCLAE LAE)) %THEN %DO;
          CVrisk = &wt ABS(&Y - p_&book._full);
          OUTPUT;
@@ -5010,7 +5010,7 @@ RUN;
          CVrisk = &wt -(&Y * LOGBOUND(p_&book._full, &TRIMBOUND, 1-&TRIMBOUND) + (1-&Y) * LOGBOUND(1-p_&book._full, &TRIMBOUND, 1-&TRIMBOUND));
          OUTPUT;
        %END;
-     %LET L = %EVAL(&L + 1);
+     %LET l_l = %EVAL(&l_l + 1);
     %END; *scan l;
   RUN;
   PROC SQL NOPRINT;

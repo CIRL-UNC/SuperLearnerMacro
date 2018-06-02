@@ -239,11 +239,13 @@ PROC MEANS DATA = cfests;
   TITLE "All results";
 RUN;
 
-All results
 
 
 /*
 Results for 100 runs
+
+All results
+
 The MEANS Procedure
 
 Variable      N            Mean         Std Dev         Minimum         Maximum
