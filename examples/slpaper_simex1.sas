@@ -53,7 +53,7 @@ DATA train(DROP=i my) test(DROP=i my);
   %PUT &res;
   %PUT &rsq;
   PROC SQL;
-    CREATE TABLE dev AS SELECT &res (Y-MEAN(Y))**2 AS devsq FROM sl_outdata;
+    CREATE TABLE dev AS SELECT &res (Y-MEAN(Y))**2 AS devsq FROM sl_outdata(WHERE=(__train=0));
     SELECT &rsq MEAN(devsq) as den FROM DEV;
     CREATE TABLE rsq AS SELECT &rsq MEAN(devsq) as den FROM DEV;
   QUIT;
