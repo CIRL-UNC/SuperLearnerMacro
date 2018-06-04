@@ -393,14 +393,14 @@ sup {
 <li>NN implies non-negative coefficients that are standardized after fitting to sum to 1. </li>
 <li>CC implies a convexity constraint where the super learner fit is subject to a constraint that forces the coefficients to fall in [0,1] and sum to 1.0. No prefix implies no constraints (which results in some loss of asymptotic properties such as the oracle property). Note: OLS violates this naming convention, but LS will also be accepted and is equivalent to OLS</li>
 </ul></li>
-<li>suffixes: LS, RIDGE, LOGLIK, LAE, where
+<li>suffixes: LS, RIDGE, LOGLIK, LAE, LASSO, where
 
 <ul>
 <li>LS methods use an L2 loss function (least squares - OLS, NNLS, CCLS, BOLS, BNNLS, BCCLS)</li>
-<li>RIDGE methods use an L2 penalized L2 loss function (ridge regression - RIDGE, NNRIDGE, CCRIDGE, BRIDGE, BNNRIDGE, BCCRIDGE)</li>
-<li>LASSO methods use an L1 penalized L2 loss function (LASSO regression - BLASSO, BNNLASSO, BCCLASSO)</li>
+<li>RIDGE methods use an L2 penalized L2 loss function (ridge regression - RIDGE, NNRIDGE, CCRIDGE, BRIDGE, BNNRIDGE, BCCRIDGE). Penalization level can be modified in the %_SuperLearner macro via the <strong>slridgepen</strong> parameter (default 0.3).</li>
 <li>LOGLIK methods use a loss function corresponding to the binomial likelihood with a logit link function (logistic regression - LOGLIK, NNLOGLIK, CCLOGLIK, BLOGLIK, BNNLOGLIK, BCCLOGLIK)</li>
 <li>LAE methods [experimental] use an L1 loss function (least absolute error), which will not penalize outliers as much as L2 methods, and is also non-differentiable at the minimum (median regression - LAE, NNLAE, CCLAE, BLAE, BNNLAE, BCCLAE) which may cause computational difficulties</li>
+<li>LASSO methods use an L1 penalized L2 loss function (LASSO regression - B methods only: BLASSO, BNNLASSO, BCCLASSO). Penalization level can be modified in the %_SuperLearner macro via the <strong>slridgepen</strong> parameter (default 0.3).</li>
 </ul></li>
 </ul></li>
 <li><p><strong>by</strong>: [OPTIONAL value = variable name] a by variable in the usual SAS usage. Separate super learner fits will be specified for each level of the by variable (only one allowed, unlike typical &ldquo;by&rdquo; variables. </p></li>
@@ -410,15 +410,15 @@ sup {
 <li><p><strong>nominal_predictors</strong>: [value =  blank, or a space separated list of variable names]advanced specification of predictors: a space separated list of nominal predictors (OPTIONAL but at least one of the <strong>X</strong> or <strong>[coding]_predictors</strong> parameters must be specified)</p></li>
 <li><p><strong>continuous_predictors</strong>: [value =  blank, or a space separated list of variable names] advanced specification of predictors: a space separated list of continuous predictors (OPTIONAL but at least one of the <strong>X</strong> or <strong>[coding]_predictors</strong> parameters must be specified)</p></li>
 <li><p><strong>weight</strong>: [OPTIONAL value = a variable name] a variable containing weights representing the relative contribution of each observation to the fit (a.k.a. case weights). Not all learners will respect non-integer weights, so weights will either be ignored or truncated by some procedures.</p></li>
-<li><p><strong>trtstrat</strong>: [value  = true, false; DEFAULT: false] convenience function. If this is set to true and <strong>intvars</strong> is specified, then all fits will be stratified by levels of <strong>intvars</strong> (0,1) accepted only.</p></li>
-<li><p><strong>folds</strong>: [value  = integer ; default: 10] number of cross-validation folds to use</p></li>
+<li><p><strong>trtstrat</strong>: [value  = true, false; DEFAULT: false] convenience function. If this is set to true and <strong>intvars</strong> is specified, then all fits will be stratified by levels of <strong>intvars</strong>. Levels 0,1 only.</p></li>
+<li><p><strong>folds</strong>: [value  = integer ; default: 10] number of cross-validation folds to use.</p></li>
 </ul>
 
 <h4 id="toc_6">2. %_SuperLearner macro</h4>
 
-<p>This is a less user-friendly version of the %SuperLearner macro that may be somewhat faster due to reduced error checking, and offers finer level controls. If the %SuperLearner macro completes successfully, it will give some example code that can be run with %_SuperLearner. Of note, there is no checking of parameter syntax, so the case-sensitive parameter arguments may cause an error in %_SuperLearner, but not %SuperLearner.</p>
+<p>This is a version of the %SuperLearner macro for advanced users that may be somewhat faster due to reduced error checking, and offers finer level controls. If the %SuperLearner macro completes successfully, it will give some example code that can be run with %_SuperLearner. Of note, there is no checking or correction of parameter syntax, so the case-sensitive parameter arguments may cause an error in %_SuperLearner, but not %SuperLearner.</p>
 
-<p>One main difference is that %_SuperLearner will make no guesses about variable types for <strong>X</strong>, so use of the <strong>[coding]_predictors</strong> is required for correct specification.</p>
+<p>One main difference is that %_SuperLearner will make no guesses about variable types for <strong>X</strong>, so use of the <strong>[coding]_predictors</strong> parameters is required for correct specification. See the source code for documentation of additional options.</p>
 
 <h4 id="toc_7">3. %CVSuperLearner macro</h4>
 
@@ -433,26 +433,13 @@ sup {
 </ol></li>
 </ul>
 
-<p>Options repeated from %SuperLearner</p>
+<p>Options repeated from %SuperLearner (see definitions given above)</p>
 
-<ul>
-<li><strong>Y</strong>: see %SuperLearner macro definition</li>
-<li><strong>X</strong>: see %SuperLearner macro definition</li>
-<li><strong>by</strong>: see %SuperLearner macro definition</li>
-<li><strong>binary_predictors</strong>:  see %SuperLearner macro definition</li>
-<li><strong>ordinal_predictors</strong>:  see %SuperLearner macro definition</li>
-<li><strong>nominal_predictors</strong>: see %SuperLearner macro definition </li>
-<li><strong>continuous_predictors</strong>:  see %SuperLearner macro definition</li>
-<li><strong>weight</strong>: see %SuperLearner macro definition</li>
-<li><strong>indata</strong>: see %SuperLearner macro definition</li>
-<li><strong>dist</strong>: see %SuperLearner macro definition (default: GAUSSIAN)</li>
-<li><strong>library</strong>:  see %SuperLearner macro definition </li>
-<li><strong>method</strong>:  see %SuperLearner macro definition (default: NNLS)</li>
-</ul>
+<p><strong>Y</strong>, <strong>X</strong>, <strong>binary_predictors</strong>, <strong>ordinal_predictors</strong>, <strong>nominal_predictors</strong>, <strong>continuous_predictors</strong>, <strong>weight</strong>, <strong>indata</strong>, <strong>dist</strong>, <strong>library</strong>, <strong>method</strong></p>
 
 <h4 id="toc_8">4. %_CVSuperLearner macro</h4>
 
-<p>This is a less user-friendly version of the %CVSuperLearner macro that may be somewhat faster due to reduced error checking, and offers finer level controls. See the source code for further tuning options.</p>
+<p>This is a version of the %CVSuperLearner macro for advanced users that may be somewhat faster due to reduced error checking, and offers finer level controls. See the source code for further tuning options.</p>
 
 <h4 id="toc_9">Further reading</h4>
 

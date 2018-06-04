@@ -272,7 +272,6 @@ SuperLearner:
 %MACRO CVSuperLearner(
                      Y=,
                      X=,
-                     by=,
                      binary_predictors=  ,
                      ordinal_predictors=  ,
                      nominal_predictors=  ,
@@ -292,7 +291,6 @@ CVSuperLearner:
 %_CVSuperLearner(
                      Y=&Y,
                      X=&X,
-                     by=&by,
                      binary_predictors= &binary_predictors ,
                      ordinal_predictors= &ordinal_predictors ,
                      nominal_predictors= &nominal_predictors ,
@@ -592,7 +590,6 @@ _main: the absolute barebones super learner macro (not to be called on its own)
 %MACRO _CVSuperLearner(
                        Y=,
                        X=,
-                       by=,
                        binary_predictors=  ,
                        ordinal_predictors=  ,
                        nominal_predictors=  ,
@@ -624,6 +621,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
                        quietwarning=FALSE,
                        quietnotes=FALSE,
                        timer=TRUE);
+  *todo: add in by group processing;
   OPTIONS NONOTES;
   %LOCAL CVSLV cvSLseed;
   %LET cvSLseed = %EVAL(&SEED);
@@ -657,7 +655,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
       %IF %__truecheck(&reportcvfolds) %THEN  %__SLnote(CVSuperLearner fold &CVSLV of &CVSLfolds);;
       %_SuperLearner(Y=&Y,
                      X=&X,
-                     by=&by,
+                     by=,
                      binary_predictors= &binary_predictors ,
                      ordinal_predictors= &ordinal_predictors ,
                      nominal_predictors= &nominal_predictors ,
