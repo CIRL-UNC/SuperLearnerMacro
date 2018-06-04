@@ -1,8 +1,8 @@
-%PUT super learner macro v0.14.0 (pre-release 1.0);
+%PUT super learner macro v0.15.0 (pre-release 1.0);
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version:     0.14.0 (pre-release 1.0)
+* Version:     0.15.0 (pre-release 1.0)
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS (tested on sas 9.4 TS1M3)
@@ -580,7 +580,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
   DATA __SLtime; SET __Sltime;
     end = time();
     duration = (end-start)/60;
-  DATA _NULL_; SET __Sltime; CALL SYMPUT("runtime", PUT(duration, 10.1));
+  DATA _NULL_; SET __Sltime; CALL SYMPUT("runtime", PUT(duration, 10.3));
   PROC SQL NOPRINT; DROP TABLE __SLTIME;
   %END;
   RUN; QUIT; RUN;
