@@ -61,7 +61,7 @@ This programs structure is:
  2018-04-19: NNLAE, CCLAE, LAE (non-negative, convex constraint L1 loss function)
  2018-04-28: Added CV super learner, some additional error recovery
  2018-05-18: Enabled weighting 
- 2018-05-56: Enabled ridge methods for super learner model 
+ 2018-05-26: Enabled ridge methods for super learner model 
 **********************************************************************************************************************/
 
 %LET suppresswarn = *; *set to * to turn off all warnings about the correct sas version for each proc, empty otherwise;
@@ -378,7 +378,7 @@ main work horse macros: _SuperLearner and _CVSuperLearner;
   
   * _SuperLearner macro: workhorse function that can be called by the user and contains finer control
     and less error checking than the SuperLearner macro;
-  %PUT NOTE: Super learner starting;
+  %PUT NOTE: Super learner started;
   %IF &speedup=TRUE %THEN %DO;
    *eventually there will be more here;
    OPTIONS COMPRESS=BINARY;
@@ -2696,6 +2696,31 @@ RUN;
    QUIT;
 %MEND boost_in;
 
+%MACRO boosting_in(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+  /* gradient boosting*/
+  &suppresswarn %__SLwarning(%str(This function (BOOST) is untested below SAS 9.4 TS1M3));
+  /*%LET modopts = %bquote(HUBER=NO Iterations=1000 TrainProportion = .60 SHRINKAGE=0.1 LeafFraction=0.1 MinCatsize=5 Maxbranch=2
+        MAXDEPTH=4 );*/
+  %LET modopts = %STR();
+  PROC ARBOR PROC=TREEBOOST DATA = &indata SEED=&seed &modopts;
+    FORMAT &Y;
+    %IF &WEIGHT^= %THEN FREQ &weight;; *weights possibly truncated to integer values;
+    TARGET &Y / LEVEL=nominal;
+      %IF (&ordinal_predictors~=) OR (&binary_predictors~=) OR (&nominal_predictors~=) %THEN 
+          INPUT &binary_predictors &ordinal_predictors &nominal_predictors / LEVEL = nominal;;
+      %IF (&continuous_predictors~=) %THEN 
+           INPUT &continuous_predictors / LEVEL = interval;;
+    SCORE DATA=&indata OUT=__sltm0017_(RENAME = (p_&Y.1 = p_boosting&SUFF) DROP = p_&Y.0 q_&Y.: r_&Y.: F_&Y U_&Y i_&Y _warn_);
+  PROC DATASETS LIBRARY=work NOPRINT NODETAILS ;
+    DELETE &outdata;
+    CHANGE __sltm0017_=&outdata ;
+   QUIT;
+%MEND boosting_in;
+
+
 %MACRO boost_cn(
                 Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
@@ -2720,6 +2745,31 @@ RUN;
    QUIT;
   RUN;
 %MEND boost_cn;
+
+%MACRO boosting_cn(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+  /* gradient boosting (same as boost_cn)*/
+  &suppresswarn %__SLwarning(%str(This function (BOOST) is untested below SAS 9.4 TS1M3));
+  /*%LET modopts = %bquote(HUBER=1 Iterations=1000 TrainProportion = .60 SHRINKAGE=0.1 LeafFraction=0.1 MinCatsize=5 Maxbranch=2
+        MAXDEPTH=4 );*/
+  %LET modopts = %STR();
+  PROC ARBOR PROC=TREEBOOST DATA = &indata SEED=&seed &modopts;
+    FORMAT &Y;
+    %IF &WEIGHT^= %THEN FREQ &weight;; *weights possibly truncated to integer values;
+    TARGET &Y / LEVEL=INTERVAL;
+     %IF (&ordinal_predictors~=) OR (&binary_predictors~=) OR (&nominal_predictors~=) %THEN 
+          INPUT &binary_predictors &ordinal_predictors &nominal_predictors / LEVEL = nominal;;
+     %IF (&continuous_predictors~=) %THEN 
+           INPUT &continuous_predictors / LEVEL = interval;;
+     SCORE DATA=&indata  OUT=__sltm0017_(RENAME=(p_&Y = p_boosting&SUFF) DROP =  r_&Y  _warn_);
+   PROC DATASETS LIBRARY=work NOPRINT NODETAILS ;
+    DELETE &outdata;
+    CHANGE __sltm0017_=&outdata ;
+   QUIT;
+  RUN;
+%MEND boosting_cn;
 
 %MACRO bagging_in(
                 Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
