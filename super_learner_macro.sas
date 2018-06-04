@@ -1463,7 +1463,6 @@ RUN;
     SCORE out=&outdata (drop = _Warn_ f_&Y I_&Y p_&Y.0 RENAME=(p_&Y.1 = p_rfoob&SUFF));
     ID _ALL_;
   RUN;
-  /* to do: expand to out of data prediction using HP4score */
 %MEND rfoob_in;
 
 %MACRO rfoob_cn(
@@ -1485,7 +1484,6 @@ RUN;
     SCORE out=&outdata (drop = _Warn_ R_&Y RENAME=(p_&Y = p_rfoob&SUFF));
     ID _ALL_;
   RUN;
-  /* to do: expand to out of data prediction using HP4score */
 %MEND rfoob_cn;
 
 %MACRO logit_in(
@@ -1500,7 +1498,6 @@ RUN;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors;
     OUTPUT OUT = &OUTDATA(DROP=_level_) PRED=p_logit&SUFF;
   RUN;
-  /* to do: expand to out of data prediction using a second proc logistic statement */
 %MEND logit_in;
 *%logit_in( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
@@ -1516,7 +1513,6 @@ RUN;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms;
     OUTPUT OUT = &OUTDATA(DROP=_level_) PRED=p_logitint&SUFF;
   RUN;
-  /* to do: expand to out of data prediction using a second proc logistic statement */
 %MEND logitint_in;
 *%logit_in( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
@@ -1657,7 +1653,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y(EVENT='1') = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / DIST=BINARY LINK=LOGIT;
     SELECTION METHOD=lasso(CHOOSE=BIC STOP=BIC);
-    OUTPUT OUT = &OUTDATA() p = p_lasso&SUFF; 
+    OUTPUT OUT = &OUTDATA p = p_lasso&SUFF; 
     ID _ALL_;
   RUN;;
 %MEND lasso_in;
@@ -1675,7 +1671,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y(EVENT='1') = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / DIST=BINARY LINK=LOGIT;
     SELECTION METHOD=BACKWARD(CHOOSE=BIC STOP=BIC);
-    OUTPUT OUT = &OUTDATA() p = p_back&SUFF; 
+    OUTPUT OUT = &OUTDATA p = p_back&SUFF; 
     ID _ALL_;
   RUN;;
 %MEND back_in;
@@ -1693,7 +1689,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y(EVENT='1') = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms / DIST=BINARY LINK=LOGIT;
     SELECTION METHOD=BACKWARD(CHOOSE=BIC STOP=BIC);
-    OUTPUT OUT = &OUTDATA() p = p_backINT&SUFF; 
+    OUTPUT OUT = &OUTDATA p = p_backINT&SUFF; 
     ID _ALL_;
   RUN;;
 %MEND backint_in;
@@ -1712,7 +1708,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / 
     SELECTION=LASSO;
-    OUTPUT OUT = &OUTDATA() PRED=p_lassob&SUFF;
+    OUTPUT OUT = &OUTDATA PRED=p_lassob&SUFF;
   RUN;
 %MEND lassob_in;
 
@@ -1728,7 +1724,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y(EVENT='1') = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / DIST=BINARY LINK=LOGIT;
     SELECTION METHOD=STEPWISE(CHOOSE=BIC STOP=BIC);
-    OUTPUT OUT = &OUTDATA() p = p_swise&SUFF; 
+    OUTPUT OUT = &OUTDATA p = p_swise&SUFF; 
     ID _ALL_;
   RUN;;
 %MEND swise_in;
@@ -1746,7 +1742,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y(EVENT='1') = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms/ DIST=BINARY LINK=LOGIT;
     SELECTION METHOD=lasso;
-    OUTPUT OUT = &OUTDATA() p = p_lassoint&SUFF; 
+    OUTPUT OUT = &OUTDATA p = p_lassoint&SUFF; 
     ID _ALL_;
   RUN;;
 %MEND lassoint_in;
@@ -1764,7 +1760,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y(EVENT='1') = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors  &SLIXterms/ DIST=BINARY LINK=LOGIT;
     SELECTION METHOD=STEPWISE(CHOOSE=BIC STOP=BIC);
-    OUTPUT OUT = &OUTDATA() p = p_swiseint&SUFF; 
+    OUTPUT OUT = &OUTDATA p = p_swiseint&SUFF; 
     ID _ALL_;
   RUN;;
 %MEND swiseint_in;
@@ -1782,7 +1778,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms / 
     SELECTION=LASSO;
-    OUTPUT OUT = &OUTDATA() PRED=p_lassobint&SUFF;
+    OUTPUT OUT = &OUTDATA PRED=p_lassobint&SUFF;
   RUN;
 
 %MEND lassobint_in;
@@ -1800,7 +1796,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / DIST=NORMAL LINK=IDENTITY;
     SELECTION METHOD=lasso(CHOOSE=BIC STOP=BIC);
-    OUTPUT OUT = &OUTDATA() p = p_lasso&SUFF; 
+    OUTPUT OUT = &OUTDATA p = p_lasso&SUFF; 
     ID _ALL_;
   RUN;;
 %MEND lasso_cn;
@@ -1818,7 +1814,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / DIST=NORMAL LINK=IDENTITY;
     SELECTION METHOD=BACKWARD(CHOOSE=BIC STOP=BIC);
-    OUTPUT OUT = &OUTDATA() p = p_back&SUFF; 
+    OUTPUT OUT = &OUTDATA p = p_back&SUFF; 
     ID _ALL_;
   RUN;;
 %MEND back_cn;
@@ -1836,7 +1832,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms / DIST=NORMAL LINK=IDENTITY;
     SELECTION METHOD=BACKWARD(CHOOSE=BIC STOP=BIC);
-    OUTPUT OUT = &OUTDATA() p = p_backint&SUFF; 
+    OUTPUT OUT = &OUTDATA p = p_backint&SUFF; 
     ID _ALL_;
   RUN;;
 %MEND backint_cn;
@@ -1854,7 +1850,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / 
     SELECTION=LASSO;
-    OUTPUT OUT = &OUTDATA() PRED=p_lassob&SUFF;
+    OUTPUT OUT = &OUTDATA PRED=p_lassob&SUFF;
   RUN;
 
 %MEND lassob_cn;
@@ -1911,7 +1907,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y(EVENT='1') = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / DIST=normal LINK=id;
     SELECTION METHOD=STEPWISE;
-    OUTPUT OUT = &OUTDATA() p = p_swise&SUFF; 
+    OUTPUT OUT = &OUTDATA p = p_swise&SUFF; 
     ID _ALL_;
   RUN;;
 %MEND swise_cn;
@@ -1927,7 +1923,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y(EVENT='1') = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors  &SLIXterms/ DIST=normal LINK=id;
     SELECTION METHOD=STEPWISE;
-    OUTPUT OUT = &OUTDATA() p = p_swiseint&SUFF; 
+    OUTPUT OUT = &OUTDATA p = p_swiseint&SUFF; 
     ID _ALL_;
   RUN;;
 %MEND swiseint_cn;
@@ -1944,7 +1940,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms/ DIST=NORMAL LINK=IDENTITY;
     SELECTION METHOD=lasso(CHOOSE=BIC STOP=BIC);
-    OUTPUT OUT = &OUTDATA() p = p_lassoint&SUFF; 
+    OUTPUT OUT = &OUTDATA p = p_lassoint&SUFF; 
     ID _ALL_;
   RUN;;
 %MEND lassoint_cn;
@@ -1962,7 +1958,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors  &SLIXterms/ 
     SELECTION=LASSO;
-    OUTPUT OUT = &OUTDATA() PRED=p_lassointb&SUFF;
+    OUTPUT OUT = &OUTDATA PRED=p_lassointb&SUFF;
   RUN;
 %MEND lassointb_cn;
 
@@ -2028,7 +2024,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / 
     SELECTION=LAR;
-    OUTPUT OUT = &OUTDATA() PRED=p_lar&SUFF;
+    OUTPUT OUT = &OUTDATA PRED=p_lar&SUFF;
   RUN;
 %MEND lar_in;
 *%lar_in( Y=y, indata=a,  outdata=lar_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
@@ -2045,7 +2041,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms/ 
     SELECTION=LAR;
-    OUTPUT OUT = &OUTDATA() PRED=p_larint&SUFF;
+    OUTPUT OUT = &OUTDATA PRED=p_larint&SUFF;
   RUN;
 %MEND larint_in;
 *%lar_in( Y=y, indata=a,  outdata=lar_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
@@ -2081,7 +2077,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / 
     SELECTION=ELASTICNET;
-    OUTPUT OUT = &OUTDATA() PRED=p_enet&SUFF;
+    OUTPUT OUT = &OUTDATA PRED=p_enet&SUFF;
   RUN;
 %MEND enet_in;
 *%enet_in( Y=y, indata=a,  outdata=ENET_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
@@ -2098,7 +2094,7 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms/ 
     SELECTION=ELASTICNET;
-    OUTPUT OUT = &OUTDATA() PRED=p_enetint&SUFF;
+    OUTPUT OUT = &OUTDATA PRED=p_enetint&SUFF;
   RUN;
 %MEND enetint_in;
 *%enet_in( Y=y, indata=a,  outdata=ENET_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
@@ -2569,7 +2565,6 @@ RUN;
    SET &outdata;
    p_marsint&SUFF = EXPIT(p_marsint&SUFF);
   RUN;
-  /* to do: expand to out of data prediction using HP4score */
 %MEND marsint_in;
 
 %MACRO marsint_cn(
@@ -2584,7 +2579,6 @@ RUN;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms / LINK=ID DFPERBASIS=2;
     OUTPUT OUT = &OUTDATA PRED=p_marsint&SUFF;
   RUN;
-  /* to do: expand to out of data prediction using HP4score */
 %MEND marsint_cn;
 
 %MACRO loess_cn(      
@@ -3055,6 +3049,249 @@ RUN;
     DELETE __dmdb;
   QUIT;
 %MEND deepnn_in;
+
+%MACRO hplogit_in(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+  /* logistic model */
+  PROC HPLOGISTIC DATA = &indata NOPRINT;
+    FORMAT &Y;
+    ID _all_;
+    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y (DESCENDING) = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors;
+    OUTPUT OUT = &OUTDATA PRED=p_hplogit&SUFF;
+  RUN;
+%MEND hplogit_in;
+*%hplogit_in( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
+
+%MACRO hplogitint_in(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+  /* logistic model with interaction terms*/
+  PROC HPLOGISTIC DATA = &indata NOPRINT ;
+    FORMAT &Y;
+    ID _all_;
+    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y (DESCENDING) = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms;
+    OUTPUT OUT = &OUTDATA PRED=p_hplogitint&SUFF;
+  RUN;
+%MEND hplogitint_in;
+*%hplogit_in( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
+
+%MACRO hplinreg_cn(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+  /* linear regression model */
+  PROC HPREG DATA = &indata NOPRINT SEED=&seed;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    ID _ALL_;
+    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors ;
+    OUTPUT OUT = &OUTDATA PRED=p_hplinreg&SUFF;
+  RUN;
+%MEND hplinreg_cn;
+*%hplinreg_in( Y=y, indata=a,  outdata=hplinreg_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
+
+%MACRO hplinregint_cn(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+  /* linear regression model with interaction terms */
+  PROC HPREG DATA = &indata NOPRINT SEED=&seed;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    ID _ALL_;
+    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms; 
+    OUTPUT OUT = &OUTDATA PRED=p_hplinregint&SUFF;
+  RUN;
+%MEND hplinregint_cn;
+*%hplinreg_cn( Y=y, indata=a,  outdata=hplinreg_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
+
+
+%MACRO hplasso_cn(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+  /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
+  PROC HPREG DATA = &indata NOPRINT SEED=&seed;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    ID _ALL_;
+    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors ;
+    SELECTION METHOD=LASSO(CHOOSE=BIC STOP=BIC);
+    OUTPUT OUT = &OUTDATA PRED=p_hplasso&SUFF;
+  RUN;
+%MEND hplasso_cn;
+*%hplasso_in( Y=y, indata=a,  outdata=hplasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
+
+%MACRO hplassoint_cn(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+  /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) with interaction terms */
+  PROC HPREG DATA = &indata NOPRINT SEED=&seed;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    ID _ALL_;
+    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms; 
+    SELECTION METHOD=LASSO(CHOOSE=BIC STOP=BIC);
+    OUTPUT OUT = &OUTDATA PRED=p_hplassoint&SUFF;
+  RUN;
+%MEND hplassoint_cn;
+*%hplasso_cn( Y=y, indata=a,  outdata=hplasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
+
+%MACRO hplar_cn(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+  /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
+  PROC HPREG DATA = &indata NOPRINT SEED=&seed;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    ID _ALL_;
+    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors ;
+    SELECTION METHOD=LAR(CHOOSE=BIC STOP=BIC);
+    OUTPUT OUT = &OUTDATA PRED=p_hplar&SUFF;
+  RUN;
+%MEND hpLAR_cn;
+*%hpLAR_in( Y=y, indata=a,  outdata=hpLAR_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
+
+%MACRO hplarint_cn(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+  /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) with interaction terms */
+  PROC HPREG DATA = &indata NOPRINT SEED=&seed;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    ID _ALL_;
+    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms; 
+    SELECTION METHOD=LAR(CHOOSE=BIC STOP=BIC);
+    OUTPUT OUT = &OUTDATA PRED=p_hplarint&SUFF;
+  RUN;
+%MEND hplarint_cn;
+*%hpLAR_cn( Y=y, indata=a,  outdata=hpLAR_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
+%MACRO hplasso_in(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+  /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
+  PROC HPREG DATA = &indata NOPRINT SEED=&seed;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    ID _ALL_;
+    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors ;
+    SELECTION METHOD=LASSO(CHOOSE=BIC STOP=BIC);
+    OUTPUT OUT = &OUTDATA PRED=p_hplasso&SUFF;
+  RUN;
+%MEND hplasso_in;
+*%hplasso_in( Y=y, indata=a,  outdata=hplasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
+
+%MACRO hplassoint_in(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+  /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) with interaction terms */
+  PROC HPREG DATA = &indata NOPRINT SEED=&seed;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    ID _ALL_;
+    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms; 
+    SELECTION METHOD=LASSO(CHOOSE=BIC STOP=BIC);
+    OUTPUT OUT = &OUTDATA PRED=p_hplassoint&SUFF;
+  RUN;
+%MEND hplassoint_in;
+*%hplasso_in( Y=y, indata=a,  outdata=hplasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
+
+%MACRO hplar_in(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+  /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
+  PROC HPREG DATA = &indata NOPRINT SEED=&seed;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    ID _ALL_;
+    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors ;
+    SELECTION METHOD=LAR(CHOOSE=BIC STOP=BIC);
+    OUTPUT OUT = &OUTDATA PRED=p_hplar&SUFF;
+  RUN;
+%MEND hpLAR_in;
+*%hpLAR_in( Y=y, indata=a,  outdata=hpLAR_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
+
+%MACRO hplarint_in(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+  /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) with interaction terms */
+  PROC HPREG DATA = &indata NOPRINT SEED=&seed;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    ID _ALL_;
+    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms; 
+    SELECTION METHOD=LAR(CHOOSE=BIC STOP=BIC);
+    OUTPUT OUT = &OUTDATA PRED=p_hplarint&SUFF;
+  RUN;
+%MEND hpLARint_in;
+*%hpLAR_in( Y=y, indata=a,  outdata=hpLAR_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
+
+%MACRO hpglm_in(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+ /*hpglm: wrapper for linreg*/
+ %hplogit_cn(Y=&y, indata=&indata,  outdata=&outdata(RENAME=(p_hplogit&SUFF=p_hpglm&SUFF)),  binary_predictors= &binary_predictors,  ordinal_predictors=&ordinal_predictors,  nominal_predictors=&nominal_predictors,   continuous_predictors=&continuous_predictors,weight=&weight, suff=&suff, seed=&seed)
+%MEND hpglm_in;
+
+%MACRO hpglmint_in(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+ /*wrapper for linregint*/
+ %hplogitint_cn(Y=&y, indata=&indata,  outdata=&outdata(RENAME=(p_hplogitint&SUFF=p_hpglmint&SUFF)),  binary_predictors= &binary_predictors,  ordinal_predictors=&ordinal_predictors,  nominal_predictors=&nominal_predictors,   continuous_predictors=&continuous_predictors,weight=&weight, suff=&suff, seed=&seed)
+%MEND hpglmint_in;
+
+%MACRO hpglm_cn(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+ /*hpglm: wrapper for linreg*/
+ %hplinreg_cn(Y=&y, indata=&indata,  outdata=&outdata(RENAME=(p_hplinreg&SUFF=p_hpglm&SUFF)),  binary_predictors= &binary_predictors,  ordinal_predictors=&ordinal_predictors,  nominal_predictors=&nominal_predictors,   continuous_predictors=&continuous_predictors,weight=&weight, suff=&suff, seed=&seed)
+%MEND hpglm_cn;
+
+%MACRO hpglmint_cn(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+);
+ /*wrapper for linregint*/
+ %hplinregint_cn(Y=&y, indata=&indata,  outdata=&outdata(RENAME=(p_hplinregint&SUFF=p_hpglmint&SUFF)),  binary_predictors= &binary_predictors,  ordinal_predictors=&ordinal_predictors,  nominal_predictors=&nominal_predictors,   continuous_predictors=&continuous_predictors,weight=&weight, suff=&suff, seed=&seed)
+%MEND hpglmint_cn;
+
 
 /********************************************************;
 * Part 2: learner functions that call R;
@@ -4632,7 +4869,7 @@ RUN;
         IMPVAR sl_pred{i IN OBS} = SUM{j in LIB} coef[j]*libmem[i,j] ;
         * get risk for each algorithm;
         IMPVAR riskl{j in LIB} = 1/&SLSampSize * SUM{i in OBS}  ABS(__y[i] - libmem[i,j]);
-        * minimize the cross validated risk (not equal to the super learner risk, which is a function of the learners fit to the full data);
+        * minimize the cross validated risk ;
         VAR rabs{OBS} >=0;
         CON rup{i IN OBS}:   rabs[i] >=  (__y[i] - sl_pred[i])*__weight[i];
         CON rdown{i IN OBS}: rabs[i] >= -(__y[i] - sl_pred[i])*__weight[i];
@@ -4644,7 +4881,7 @@ RUN;
         IMPVAR sl_pred{i IN OBS} = SUM{j in LIB} coef[j]*libmem[i,j] ;
         * get risk for each algorithm;
         IMPVAR riskl{j in LIB} = 1/&SLSampSize * SUM{i in OBS}  __weight[i]*(__y[i] - libmem[i,j])**2;
-        * minimize the cross validated risk (not equal to the super learner risk, which is a function of the learners fit to the full data);
+        * minimize the cross validated risk ;
         MIN risk = %IF (&METHOD IN (RIDGE CCRIDGE NNRIDGE)) %THEN &slridgepen *1/(&SLSampSize)*(SUM{j in LIB} coef[j]**2) + ; 1/&SLSampSize * SUM{i IN OBS} __weight[i]*(__y[i] - sl_pred[i])**2 ;
         SOLVE WITH qp;
       %END;
@@ -4652,9 +4889,9 @@ RUN;
         *negative of the binomial likelihood;
         IMPVAR sl_pred{i IN OBS} = EXPIT(SUM{j in LIB} coef[j]*LOGITBOUND(libmem[i,j], &TRIMBOUND, 1-&TRIMBOUND)) ; *v 0.31+;
         * get risk for each algorithm;
-        IMPVAR riskl{j in LIB} = -1/&SLSampSize * SUM{i in OBS}  __weight[i]*((__y[i]*LOGBOUND(libmem[i,j], &TRIMBOUND, 1-&TRIMBOUND) + 
+        IMPVAR riskl{j in LIB} = -1/&SLSampSize * SUM{i in OBS} __weight[i]*((__y[i]*LOGBOUND(libmem[i,j], &TRIMBOUND, 1-&TRIMBOUND) + 
                                               (1-__y[i])*LOGBOUND(1-libmem[i,j], &TRIMBOUND, 1-&TRIMBOUND)));
-        * minimize the cross validated risk (not equal to the super learner risk, which is a function of the learners fit to the full data);
+        * minimize the cross validated risk ;
         MIN risk = -1/&SLSampSize * SUM{i IN OBS} __weight[i]*((__y[i]*LOGBOUND(sl_pred[i], &TRIMBOUND, 1-&TRIMBOUND) + 
                                                 (1-__y[i])*LOGBOUND(1-sl_pred[i], &TRIMBOUND, 1-&TRIMBOUND)));
         SOLVE WITH nlp;
@@ -4702,8 +4939,8 @@ RUN;
     %IF &weight^= %THEN %LET wt= &weight *;;
     ODS EXCLUDE ALL; ODS NORESULTS;
     PROC HPNLMOD DATA=__sltm004_  ABSGCONV=1E-16 
-     %IF (&method IN( BCCLOGLIK BLOGLIK BNNLAE BCCLAE BLAE BOLS BNNLS BCCLS BCCRIDGE BNNRIGE BRIDGE BCCLASSO BNNLASSO BLASSO)) %THEN TECH=QUANEW; 
-     %ELSE %IF (&method IN( BNNLOGLIK )) %THEN TECH=TRUEREG;  
+     %IF (&method IN( BCCLOGLIK BNNLOGLIK BLOGLIK BNNLAE BCCLAE BLAE BOLS BNNLS BCCLS BCCRIDGE BNNRIGE BRIDGE BCCLASSO BNNLASSO BLASSO)) %THEN TECH=QUANEW; 
+     %ELSE %IF (&method IN( BNNLOGLIK )) %THEN TECH=TRUREG;  
      %ELSE TECH=LEVMAR;;
       PARMS 
          %LET l_l = 1; 
@@ -4716,7 +4953,7 @@ RUN;
          *loglik methods;
         %LET l_l = 1;
         __slp = 1/(1+EXP(-( 0
-          %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); + __slcoef_&l_l * LOG(MIN(MAX(__v&l_l/(1-__v&l_l), &TRIMBOUND), 1-&TRIMBOUND))  %LET l_l = %EVAL(&l_l +1); %END;
+          %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); + __slcoef_&l_l * (LOG(MIN(MAX(__v&l_l, &TRIMBOUND), 1-&TRIMBOUND))-LOG(MIN(MAX(1-__v&l_l, &TRIMBOUND), 1-&TRIMBOUND)))  %LET l_l = %EVAL(&l_l +1); %END;
           )));
          r =  (&y*LOG(MIN(MAX(__slp, &TRIMBOUND), 1-&TRIMBOUND)) + (1-&y)*LOG(MIN(MAX(1-__slp, &TRIMBOUND), 1-&TRIMBOUND)));
          dummy=0;

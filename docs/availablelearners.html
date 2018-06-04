@@ -338,10 +338,14 @@ sup {
 <li><strong>gampl</strong>: faster generalized additive model with 3 df splines on all continuous variables (GAMPL)</li>
 <li><strong>glm</strong>: linear or logistic regression: slower wrappers for logit and linreg (GENMOD/REG)</li>
 <li><strong>knn</strong>: [bernoulli only] k-nearest neighbors classification (DISCRIM)</li>
+<li><strong>hpglm</strong>: main term logistic/linear regression with multithreading (HPLOGISTIC/HPREG)</li>
+<li><strong>hplar</strong>: least angle regression with multithreading - warning for binary outcome: does not respect [0,1] probability space (HPREG)</li>
+<li><strong>hplogit</strong>: main term logistic regression with multithreading (HPLOGISTIC)</li>
+<li><strong>hplinreg</strong>: main term linear regression with multithreading (HPREG)</li>
 <li><strong>lar</strong>: least angle regression - warning for binary outcome: does not respect [0,1] probability space (GLMSELECT)</li>
-<li><strong>lasso</strong>: least absolute shrinkage and selection operator (HPGENSELECT)</li>
+<li><strong>lasso</strong>: least absolute shrinkage and selection operator with multithreading (HPGENSELECT)</li>
 <li><strong>lassob</strong>: LASSO with glmselect [use caution with binary variables] - may be appropriate for older sas versions (GLMSELECT)</li>
-<li><strong>lassocv</strong>: LASSO with cross-validated selection of shrinkage parameter (HPGENSELECT)</li>
+<li><strong>lassocv</strong>: LASSO with cross-validated selection of shrinkage parameter [use caution with binary variables] - (GLMSELECT)</li>
 <li><strong>logit</strong>: main term logistic regression (GENMOD)</li>
 <li><strong>linreg</strong>: main term linear regression (REG)</li>
 <li><strong>mars</strong>: multivariate adaptive regression splines (ADAPTIVEREG)</li>
@@ -361,10 +365,10 @@ sup {
 
 <p>Also includes multiple learners that are identical to other learners but include all first order interaction terms:</p>
 
-<p><strong>backint</strong>, <strong>logitint</strong>, <strong>linregint</strong>, <strong>lassoint</strong>, <strong>lassobint</strong>, <strong>lassocvint</strong>, <strong>swiseint</strong>, <strong>larint</strong>, <strong>enetint</strong>, <strong>gamint</strong>, <strong>gamplint</strong>, <strong>marsint</strong>, <strong>probitint</strong></p></li>
+<p><strong>backint</strong>, <strong>logitint</strong>, <strong>linregint</strong>, <strong>lassoint</strong>, <strong>lassobint</strong>, <strong>lassocvint</strong>, <strong>swiseint</strong>, <strong>larint</strong>, <strong>enetint</strong>, <strong>gamint</strong>, <strong>gamplint</strong>, <strong>marsint</strong>, <strong>probitint</strong>, <strong>hpglmint</strong>, <strong>hplarint</strong></p></li>
 <li><h4 id="toc_3">Learners based on R functions</h4>
 
-<p>A number of included R functions (requires SAS/IML and RLANG system option enabled) allow a limited set of learners in the R programming language. Provided that R is installed and the RLANG option properly enabled, the required packages will be automatically installed the first time the learner is called (if running the SuperLearner or CVSuperLearner macros (internet connection must be active))</p>
+<p>A number of included R functions (requires SAS/IML and RLANG system option enabled) allow a limited set of learners in the R programming language. Provided that R is installed and the RLANG option properly enabled, the required packages will be automatically installed the first time the learner is called (if running the SuperLearner or CVSuperLearner macros (internet connection must be active)). NOTE: R learners are case sensitive, unlike SAS, so specification of Y and predictor variable names must have correct case.</p>
 
 <ul>
 <li><strong>r_bagging</strong>:  bootstrap aggregation of regression/classification trees (requires ipred package)</li>
