@@ -480,7 +480,7 @@ main work horse macros: _SuperLearner and _CVSuperLearner;
    %__SLnote(Making SL predictions for "&Y" in dataset "&preddata" and "&indata");
   %END;
   *define some fcmp functions;
-  %_MKFUNCS();
+  %__MKFUNCS();
   *prepare interaction terms;
   %__makeintx(bins = &binary_predictors,  others = &ordinal_predictors &nominal_predictors &continuous_predictors);
 /*
@@ -551,17 +551,16 @@ _main: the absolute barebones super learner macro (not to be called on its own)
       %LET byj=%EVAL(&byj+1);
     %END; 
     *end if by;
-    PROC SORT DATA = &outdata; BY &BY __seqid__ __cvid__ __int; RUN;
   %END;
   %IF &by = %THEN %DO;
     /**/
     %_main(&indata, &Y, &folds, &insample, &preddata, &library, &risk, &method, &dist, &outdata, &outslcoefs, &outslrisks);
     /**/
-    PROC SORT DATA = &outdata; BY __seqid__ __cvid__ __int; RUN;
   %END;
+  PROC SORT DATA = &outdata; BY &BY __seqid__ __cvid__ __int; RUN;
   %IF %__TrueCheck(&cleanup) %THEN %DO;
     * delete some temporary datasets, fcmp functions;
-    %_FUNCLEANUP;
+    %__FUNCLEANUP;
     %__CLEANUP(%str(__sltm001_, __sltm001_0, __sltm001_1, __sltm002_, __sltm003_, __sltm004_, __sltm005_, __sltm006_, __sltm007_, __sltm008_, 
                    __sltm009_, __sltm0010_, __sltm0011_, __sltm0012_, __sltm0013_, __sltm0014_, __sltm0015_, __sltm0016_, __sltm0017_));
   %END;
@@ -575,11 +574,11 @@ _main: the absolute barebones super learner macro (not to be called on its own)
      library=&library, folds=&folds, method=&method, dist=&dist, shuffle=&shuffle, preddata=&preddata, indata=&indata,
      outcoef=&outslcoefs,outcvrisk=&outslrisks,outresults=&outresults, n=&SLSampSize);;
   %IF %__TrueCheck(&timer) %THEN %DO;
-  DATA __SLtime; SET __Sltime;
-    end = time();
-    duration = (end-start)/60;
-  DATA _NULL_; SET __Sltime; CALL SYMPUT("runtime", PUT(duration, 10.3));
-  PROC SQL NOPRINT; DROP TABLE __SLTIME;
+    DATA __SLtime; SET __Sltime;
+      end = time();
+      duration = (end-start)/60;
+    DATA _NULL_; SET __Sltime; CALL SYMPUT("runtime", PUT(duration, 10.3));
+    PROC SQL NOPRINT; DROP TABLE __SLTIME;
   %END;
   RUN; QUIT; RUN;
   OPTIONS NOTES;
@@ -801,7 +800,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
   RUN;
 %MEND _mkmethods;
 
-%MACRO _MKFUNCS();
+%MACRO __MKFUNCS();
   OPTIONS CMPLIB = work.__funcs;
   PROC FCMP OUTLIB = work.__funcs.LOGFUNCS;
   FUNCTION expit(mu);
@@ -4693,6 +4692,16 @@ RUN;
                suff=_full
     );
   %END;
+  %IF %__TrueCheck(&timer) %THEN %DO;
+    %LOCAL runtime expectime;
+    DATA __SLinttime; SET __Sltime;
+      end = time();
+      duration = (end-start)/60;
+      expectime = duration*&folds;
+    DATA _NULL_; SET __SLinttime; CALL SYMPUT("runtime", PUT(duration, 10.3));CALL SYMPUT("expectime", PUT(expectime, 10.0));
+    PROC SQL NOPRINT; DROP TABLE __SLinttime; QUIT;
+    %IF %SYSEVALF(&expectime>1) %THEN %PUT %str(Time to fit all learners to training data: %TRIM(&runtime) minutes. Expected time remaining: %TRIM(&expectime) minutes);;
+  %END;
   %__SLnote(Getting CV-fold specific predictions in full data from each learner); 
   %LET k_k=0;
   %DO %WHILE (&k_k < &folds);
@@ -4761,6 +4770,16 @@ RUN;
                weight=&weight,
                suff=_full
     );
+  %END;
+  %IF %__TrueCheck(&timer) %THEN %DO;
+    %LOCAL runtime expectime;
+    DATA __SLinttime; SET __Sltime;
+      end = time();
+      duration = (end-start)/60;
+      expectime = duration*&folds;
+    DATA _NULL_; SET __SLinttime; CALL SYMPUT("runtime", PUT(duration, 10.3));CALL SYMPUT("expectime", PUT(expectime, 10.0));
+    PROC SQL NOPRINT; DROP TABLE __SLinttime; QUIT;
+    %IF %SYSEVALF(&expectime>1) %THEN %PUT %str(Time to fit all learners to training data: %TRIM(&runtime) minutes. Expected time remaining: %TRIM(&expectime) minutes);;
   %END;
   %__SLnote(Getting CV-fold specific predictions in full data from each learner); 
   %LET k_k=0;
@@ -4867,10 +4886,10 @@ RUN;
 %MACRO _get_coef(indata=, Y=, library=, outcoef=, outrisk=, suff=, weight=, method=CCLS, debug=FALSE, seed=) / MINOPERATOR MINDELIMITER=' ';
  /*
   Get super learner coefficients
-  * getting superlearner coefficients from (POSSIBLY)constrained optimization;
+  * getting superlearner coefficients from (POSSIBLY)constrained optimization; (&outcoef)
   * optmodel can constrain individual coefficieints to [0,1] as well as the overall sum to [1];
   * want the weighted combination of the predictors in the library that produces the lowest overall loss function value (risk)
-  * this should calculate risk for the 1/k*N observations that are not included in the model fit
+  * this step will calculate overall expected loss for each learner in the library, as well (&outrisk)
  */
  %__SLnote(_get_coef);
   *temporarily rename variables for OPTMODEL;
@@ -5355,7 +5374,7 @@ RUN;
 *%LET Y= y;
 *%_cvriskreport(indata=Sl_testdata, library=logit rf lasso gam);
 
-%MACRO _funcleanup();
+%MACRO __FUNCLEANUP();
   PROC FCMP OUTLIB=work.__funcs.LOGFUNCS;
     DELETEFUNC expit;
     DELETEFUNC logit;
@@ -5373,7 +5392,7 @@ RUN;
   /*
    Get cross validated risk estimates
   */
-  %_MKFUNCS();
+  %__MKFUNCS();
   *%LET denom  = %EVAL(&CVSLsampsize/&CVSLfolds);
   %__SLnote(_get_slcvrisk);
   %LET wt =;
@@ -5443,7 +5462,7 @@ RUN;
     OUTPUT OUT = &outrisk MEAN=;
   RUN;
   %IF %__TrueCheck(&verbose) %THEN ODS SELECT NONE;;
-  %_FUNCLEANUP;
+  %__FUNCLEANUP;
 %MEND _get_slcvrisk;
 
 /********************************************************
