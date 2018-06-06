@@ -562,7 +562,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
     * delete some temporary datasets, fcmp functions;
     %__FUNCLEANUP;
     %__CLEANUP(%str(__sltm001_, __sltm001_0, __sltm001_1, __sltm002_, __sltm003_, __sltm004_, __sltm005_, __sltm006_, __sltm007_, __sltm008_, 
-                   __sltm009_, __sltm0010_, __sltm0011_, __sltm0012_, __sltm0013_, __sltm0014_, __sltm0015_, __sltm0016_, __sltm0017_));
+                   __sltm009_, __sltm0010_, __sltm0011_, __sltm0012_, __sltm0013_, __sltm0014_, __sltm0015_, __sltm0016_, __sltm0017_, _namedat));
   %END;
   ODS SELECT ALL;
   %IF %__TrueCheck(&printres) %THEN %__printsummary(Y=&Y, 
@@ -1134,7 +1134,7 @@ RUN;
    %DO %WHILE(%SCAN(&LIBRARY, &l_l)^=);
      %LET book=%SCAN(&LIBRARY, &l_l);
      %IF %SUBSTR(&book, 1,2)=r_ %THEN %DO;
-       %IF &rinst=FALSE %THEN %__SLnote(%str(R needs to be installed and Rlang system option must be enabled in SAS. See http://support.sas.com/documentation/cdl/en/imlug/64248/HTML/default/viewer.htm#r_toc.htm for details.));
+       %IF &rinst=FALSE %THEN %__SLnote(%str(R needs to be installed and Rlang system option must be enabled in SAS. See http://documentation.sas.com/?docsetId=imlug&docsetTarget=imlug_r_sect003.htm&docsetVersion=14.3&locale=en for details.));
        %LET rinst=TRUE;
        %LET _pkg = &package;
        %IF &_pkg= %THEN %DO;
@@ -1150,6 +1150,8 @@ RUN;
          %IF &book=r_lasso %THEN %LET _pkg=glmnet;;
          %IF &book=r_enet %THEN %LET _pkg=glmnet;;
          %IF &book=r_ridge %THEN %LET _pkg=glmnet;;
+         %IF &book=r_rpart %THEN %LET _pkg=rpart;;
+         %IF &book=r_rpartprune %THEN %LET _pkg=rpart;;
          %IF &book=r_sl %THEN %LET _pkg=SuperLearner;;
        %END;
        %LET rcodeb = %STR(if(!is.element(%"&_pkg%", installed.packages())) install.packages(%"&_pkg%", repos = %"https://cran.mtu.edu%", dependencies=TRUE));
@@ -2120,12 +2122,13 @@ RUN;
                 Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
 );
-  /* classification tree with cross validation*/
+  /* classification tree with cross validated pruning*/
   
   &suppresswarn %__SLwarning(%str(This function (CART) is untested below SAS 9.4 TS1M3));
   PROC HPSPLIT DATA = &indata SEED=&seed  ;
     FORMAT &Y;
     ODS SELECT NONE;
+    PRUNE CC;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     TARGET &Y / LEVEL = ordinal;
     %IF (&ordinal_predictors~=) OR (&binary_predictors~=) OR (&nominal_predictors~=) %THEN 
@@ -2141,12 +2144,13 @@ RUN;
                 Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
 );
-  /* regression tree */
+  /* regression tree with cross validated pruning*/
   
   &suppresswarn %__SLwarning(%str(This function (CART) is untested below SAS 9.4 TS1M3));
   PROC HPSPLIT DATA = &indata SEED=&seed  ;
     FORMAT &Y;
     ODS SELECT NONE;
+    PRUNE CC;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     TARGET &Y / LEVEL = interval;
     %IF (&ordinal_predictors~=) OR (&binary_predictors~=) OR (&nominal_predictors~=) %THEN 
@@ -3008,10 +3012,7 @@ RUN;
     *scoring;
     SCORE DATA=__sltm0017_ OUT=&outdata(DROP= R_&Y E_&Y __nnl: %IF &continuous_predictors^= %THEN %__nndrop(&continuous_predictors); RENAME=(P_&Y=p_deepnn&SUFF));
   RUN;
-  PROC DATASETS LIBRARY=work NOPRINT NODETAILS ;
-    DELETE __sltm0017_;
-    DELETE __dmdb;
-  QUIT;
+  %__CLEANUP(%STR(__sltm0017_, __dmdb));  
 %MEND deepnn_cn;
 
 %MACRO deepnn_in(
@@ -3091,10 +3092,7 @@ RUN;
     *scoring;
     SCORE DATA=__sltm0017_ OUT=&outdata(DROP= P_&Y.0 R_&Y.0 R_&Y.1 E_&Y.0 E_&Y.1 __nnl: %IF &continuous_predictors^= %THEN %__nndrop(&continuous_predictors); RENAME=(P_&Y.1=p_deepnn&SUFF));
   RUN;
-  PROC DATASETS LIBRARY=work NOPRINT NODETAILS ;
-    DELETE __sltm0017_;
-    DELETE __dmdb;
-  QUIT;
+  %__CLEANUP(%STR(__sltm0017_, __dmdb));  
 %MEND deepnn_in;
 
 %MACRO hplogit_in(
@@ -4352,6 +4350,213 @@ RUN;
   PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
 %MEND r_ridge_in; /*optional: include macro name in mend statement with [libraryname]_cn*/
 *%r_ridge_in(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
+
+%MACRO r_rpart_in(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+  );
+  %__SLnote(%str(R package 'rpart' must be installed));;
+  DATA __sltm0016_;
+   SET &indata;
+   FORMAT &Y;
+   %IF &weight= %THEN %DO;
+     %LET weight=wwwwww;
+     wwwwww=1;
+   %END;
+   KEEP &Y &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &weight;
+  RUN;
+  FILENAME rcode TEMP; *rsubmit requires use of include statement with code from file;
+  * write R statements to file;
+  DATA _null_;
+   FILE rcode;
+   PUT 'SUBMIT y w seed/ R;';
+   PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
+   PUT 'set.seed(&seed)';
+   PUT 'suppressWarnings(suppressMessages(library("rpart")))';
+   PUT 'Y = mdata[,"&Y"]';
+   PUT 'X = mdata[,-grep(paste0("&y", "|", "&w"), names(mdata))]';
+   PUT 'Xfl = rdata[,-grep(paste0("&y", "|", "&w"), names(rdata))]';
+   PUT 'W = mdata[,"&w"]';
+   PUT 'suppressWarnings(suppressMessages(rmod <- rpart::rpart(Y ~ ., data = data.frame(Y, 
+            X), control = rpart::rpart.control(cp = 0.01, minsplit = 20, 
+            xval = 0L, maxdepth = 30, minbucket = round(minsplit/3)), 
+            method = "class", weights = W)))';
+   PUT 'p_r = predict(rmod, newdata = Xfl)[, 2]';
+   PUT 'ENDSUBMIT;';
+  RUN;
+  PROC IML;
+   RUN ExportDataSetToR("Work.__sltm0016_", "rdata");
+   y = "&y";
+   w = "&weight";
+   seed = "&seed";
+   %INCLUDE rcode;
+   CALL ImportDatasetFromR("work.__rpreds", "p_r" );
+  QUIT;
+  OPTIONS MERGENOBY=NOWARN;
+  DATA &outdata;
+    MERGE &indata __rpreds(RENAME=(p_r = p_r_rpart&SUFF));
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+  PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
+%MEND r_rpart_in; /*optional: include macro name in mend statement with [libraryname]_cn*/
+*%r_rpart_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
+
+
+%MACRO r_rpart_cn(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+  );
+  %__SLnote(%str(R package 'rpart' must be installed));;
+  DATA __sltm0016_;
+   SET &indata;
+   FORMAT &Y;
+   %IF &weight= %THEN %DO;
+     %LET weight=wwwwww;
+     wwwwww=1;
+   %END;
+   KEEP &Y &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &weight;
+  RUN;
+  FILENAME rcode TEMP; *rsubmit requires use of include statement with code from file;
+  * write R statements to file;
+  DATA _null_;
+   FILE rcode;
+   PUT 'SUBMIT y w seed/ R;';
+   PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
+   PUT 'set.seed(&seed)';
+   PUT 'suppressWarnings(suppressMessages(library("rpart")))';
+   PUT 'Y = mdata[,"&Y"]';
+   PUT 'X = mdata[,-grep(paste0("&y", "|", "&w"), names(mdata))]';
+   PUT 'Xfl = rdata[,-grep(paste0("&y", "|", "&w"), names(rdata))]';
+   PUT 'W = mdata[,"&w"]';
+   PUT 'suppressWarnings(suppressMessages(rmod <- rpart::rpart(Y ~ ., data = data.frame(Y, 
+            X), control = rpart::rpart.control(cp = 0.01, minsplit = 20, 
+            xval = 0L, maxdepth = 30, minbucket = round(minsplit/3)), 
+            method = "anova", weights = W)))';
+   PUT 'p_r = predict(rmod, newdata = Xfl)';
+   PUT 'ENDSUBMIT;';
+  RUN;
+  PROC IML;
+   RUN ExportDataSetToR("Work.__sltm0016_", "rdata");
+   y = "&y";
+   w = "&weight";
+   seed = "&seed";
+   %INCLUDE rcode;
+   CALL ImportDatasetFromR("work.__rpreds", "p_r" );
+  QUIT;
+  OPTIONS MERGENOBY=NOWARN;
+  DATA &outdata;
+    MERGE &indata __rpreds(RENAME=(p_r = p_r_rpart&SUFF));
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+  PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
+%MEND r_rpart_cn; /*optional: include macro name in mend statement with [libraryname]_cn*/
+*%r_rpart_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
+
+%MACRO r_rpartprune_in(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+  );
+  %__SLnote(%str(R package 'rpart' must be installed));;
+  DATA __sltm0016_;
+   SET &indata;
+   FORMAT &Y;
+   %IF &weight= %THEN %DO;
+     %LET weight=wwwwww;
+     wwwwww=1;
+   %END;
+   KEEP &Y &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &weight;
+  RUN;
+  FILENAME rcode TEMP; *rsubmit requires use of include statement with code from file;
+  * write R statements to file;
+  DATA _null_;
+   FILE rcode;
+   PUT 'SUBMIT y w seed/ R;';
+   PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
+   PUT 'set.seed(&seed)';
+   PUT 'suppressWarnings(suppressMessages(library("rpart")))';
+   PUT 'Y = mdata[,"&Y"]';
+   PUT 'X = mdata[,-grep(paste0("&y", "|", "&w"), names(mdata))]';
+   PUT 'Xfl = rdata[,-grep(paste0("&y", "|", "&w"), names(rdata))]';
+   PUT 'W = mdata[,"&w"]';
+   PUT 'suppressWarnings(suppressMessages(rmod <- rpartprune::rpartprune(Y ~ ., data = data.frame(Y, 
+            X), control = rpartprune::rpartprune.control(cp = 0.001, minsplit = 20, 
+            xval = 10, maxdepth = 20, minbucket = 5), 
+            method = "class", weights = W)))';
+   PUT 'bcp <- rmod$cptable[which.min(rmod$cptable[, "xerror"]), "CP"]';
+   PUT 'rmod2 <- rpart::prune(rmod, cp = bcp)';
+   PUT 'p_r = predict(rmod2, newdata = Xfl)[,2]';
+   PUT 'ENDSUBMIT;';
+  RUN;
+  PROC IML;
+   RUN ExportDataSetToR("Work.__sltm0016_", "rdata");
+   y = "&y";
+   w = "&weight";
+   seed = "&seed";
+   %INCLUDE rcode;
+   CALL ImportDatasetFromR("work.__rpreds", "p_r" );
+  QUIT;
+  OPTIONS MERGENOBY=NOWARN;
+  DATA &outdata;
+    MERGE &indata __rpreds(RENAME=(p_r = p_r_rpartprune&SUFF));
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+  PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
+%MEND r_rpartprune_in; /*optional: include macro name in mend statement with [libraryname]_cn*/
+*%r_rpartprune_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
+
+
+%MACRO r_rpartprune_cn(
+                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+  );
+  %__SLnote(%str(R package 'rpart' must be installed));;
+  DATA __sltm0016_;
+   SET &indata;
+   FORMAT &Y;
+   %IF &weight= %THEN %DO;
+     %LET weight=wwwwww;
+     wwwwww=1;
+   %END;
+   KEEP &Y &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &weight;
+  RUN;
+  FILENAME rcode TEMP; *rsubmit requires use of include statement with code from file;
+  * write R statements to file;
+  DATA _null_;
+   FILE rcode;
+   PUT 'SUBMIT y w seed/ R;';
+   PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
+   PUT 'set.seed(&seed)';
+   PUT 'suppressWarnings(suppressMessages(library("rpart")))';
+   PUT 'Y = mdata[,"&Y"]';
+   PUT 'X = mdata[,-grep(paste0("&y", "|", "&w"), names(mdata))]';
+   PUT 'Xfl = rdata[,-grep(paste0("&y", "|", "&w"), names(rdata))]';
+   PUT 'W = mdata[,"&w"]';
+   PUT 'suppressWarnings(suppressMessages(rmod <- rpartprune::rpartprune(Y ~ ., data = data.frame(Y, 
+            X), control = rpartprune::rpartprune.control(cp = 0.001, minsplit = 20, 
+            xval = 10, maxdepth = 20, minbucket = 5), 
+            method = "anova", weights = W)))';
+   PUT 'bcp <- rmod$cptable[which.min(rmod$cptable[, "xerror"]), "CP"]';
+   PUT 'rmod2 <- rpart::prune(rmod, cp = bcp)';
+   PUT 'p_r = predict(rmod2, newdata = Xfl)';
+   PUT 'ENDSUBMIT;';
+  RUN;
+  PROC IML;
+   RUN ExportDataSetToR("Work.__sltm0016_", "rdata");
+   y = "&y";
+   w = "&weight";
+   seed = "&seed";
+   %INCLUDE rcode;
+   CALL ImportDatasetFromR("work.__rpreds", "p_r" );
+  QUIT;
+  OPTIONS MERGENOBY=NOWARN;
+  DATA &outdata;
+    MERGE &indata __rpreds(RENAME=(p_r = p_r_rpartprune&SUFF));
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+  PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
+%MEND r_rpartprune_cn; /*optional: include macro name in mend statement with [libraryname]_cn*/
+*%r_rpartprune_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
+
 
 %MACRO r_sl_cn(
                 Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 

@@ -330,7 +330,7 @@ sup {
 <li>*<strong>bayesnet</strong>: Bayesian network [binary only] (HPBNET)</li>
 <li><strong>boxcox</strong>: Box-Cox transformation of target variables, positively bound continuous Y only (TRANSREG)</li>
 <li>*<strong>boost</strong>: Gradient boosting of regression/classification trees (ARBOR)</li>
-<li><strong>cvcart</strong>: classification/regression tree with cross validated selection of meta parameters (HPSPLIT)</li>
+<li><strong>cvcart</strong>: classification/regression tree with cross validated selection of final tree based on cost-complexity (HPSPLIT)</li>
 <li><strong>cart</strong>: classification/regression tree, no cross validation (HPSPLIT)</li>
 <li>*<strong>deepnn</strong>: deep neural net with 5 hidden layers of 50 nodes each (DMDB/NEURAL)</li>
 <li><strong>enet</strong>: elastic net - warning for binary outcome: does not respect [0,1] probability space (GLMSELECT)</li>
@@ -368,7 +368,7 @@ sup {
 <p><strong>backint</strong>, <strong>logitint</strong>, <strong>linregint</strong>, <strong>lassoint</strong>, <strong>lassobint</strong>, <strong>lassocvint</strong>, <strong>swiseint</strong>, <strong>larint</strong>, <strong>enetint</strong>, <strong>gamint</strong>, <strong>gamplint</strong>, <strong>marsint</strong>, <strong>probitint</strong>, <strong>hpglmint</strong>, <strong>hplarint</strong></p></li>
 <li><h4 id="toc_3">Learners based on R functions</h4>
 
-<p>A number of included R functions (requires SAS/IML and RLANG system option enabled) allow a limited set of learners in the R programming language. Provided that R is installed and the RLANG option properly enabled, the required packages will be automatically installed the first time the learner is called (if running the SuperLearner or CVSuperLearner macros (internet connection must be active)). NOTE: R learners are case sensitive, unlike SAS, so specification of Y and predictor variable names must have correct case.</p>
+<p>A number of included R functions (requires SAS/IML and RLANG system option enabled (<a href="http://documentation.sas.com/?docsetId=imlug&amp;docsetTarget=imlug_r_sect003.htm&amp;docsetVersion=14.3&amp;locale=en">see here</a>) allow a limited set of learners in the R programming language. Provided that R is installed and the RLANG option properly enabled, the required packages will be automatically installed the first time the learner is called (if running the SuperLearner or CVSuperLearner macros (internet connection must be active)). In most cases, the default parameterization of each of these learners is identical to the parameterization given in the SuperLearner package in R, so using them with the %SuperLearner macro should give similar results to using them in R. NOTE: R learners are case sensitive, unlike SAS, so specification of Y and predictor variable names must have correct case.</p>
 
 <ul>
 <li><strong>r_bagging</strong>:  bootstrap aggregation of regression/classification trees (requires ipred package)</li>
@@ -381,6 +381,8 @@ sup {
 <li><strong>r_polymars</strong>: MARS - multivariate adaptive polynomial regression splines (requires polspline package)</li>
 <li><strong>r_rf</strong>: random forest using R superlearner defaults (requires randomForest package)</li>
 <li><strong>r_ridge</strong>:  ridge regression/classification with cross validated selection of shrinkage parameter (requires glmnet package)</li>
+<li><strong>r_rpart</strong>: CART - recursive partioning with no pruning (similar to <strong>cart</strong>) (requires rpart package)</li>
+<li><strong>r_rpartprune</strong>: CART - recursive partioning with pruning by complexity parameter selected through cross-validation (similar to <strong>cvcart</strong>) (requires rpart package)</li>
 <li><strong>r_sl</strong>:  R based super learner (using 10-fold cross-validation, NNLS method) with several default learners (glm, lasso, bart, rf, mars; requires SuperLearner package)</li>
 <li><strong>r_svm</strong>:  support vector machine regression/classification (requires e1071 package)</li>
 </ul></li>
