@@ -1063,7 +1063,7 @@ RUN;
   * remove temporary datasets: to be moved to end of macro;
   * first overwrite to prevent warning about table not existing in some cases;
   DATA __d; a=1; RUN;
-  %LET dcode = CREATE TABLE fake AS SELECT * FROM __D;
+  %LET dcode = ;
   %LET nd=1;
   %DO %WHILE(%SCAN(&ds, &nd, ',')^=);
     %LET cd = %SCAN(&ds, &nd, ',');
