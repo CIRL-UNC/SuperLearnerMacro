@@ -1,8 +1,8 @@
-%PUT super learner macro v0.15.0 (pre-release 1.0);
+%PUT super learner macro v0.15.1 (pre-release 1.0);
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version:     0.15.0 (pre-release 1.0)
+* Version:     0.15.1 (pre-release 1.0)
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS (tested on sas 9.4 TS1M3)
