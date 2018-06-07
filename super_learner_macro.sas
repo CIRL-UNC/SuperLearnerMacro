@@ -1283,6 +1283,7 @@ RUN;
   %IF %__FalseCheck(&checkvalid) %THEN %LET droplib = none;
   OPTIONS MERGENOBY=WARN;
   %IF %STR(&indata) = %STR(&preddata) %THEN %LET preddata=;
+  OPTIONS LINESIZE = 109; *rudely set line size to my default;
   DATA _NULL_;
     SET &outresults END=eof;
     FILE PRINT;
