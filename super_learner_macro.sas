@@ -413,7 +413,7 @@ main work horse macros: _SuperLearner and _CVSuperLearner;
     %END;
        
     *allow for some variation in how macro is called;
-    %IF &trtstrat^= %THEN %LET trtstrat %UPCASE(&trtstrat);
+    %IF &trtstrat^= %THEN %LET trtstrat=%UPCASE(&trtstrat);
     %IF &risk^= %THEN   %LET risk   = %SYSFUNC(UPCASE(%SYSFUNC(DEQUOTE(&risk))));;
     %IF &method^= %THEN %LET method = %SYSFUNC(UPCASE(%SYSFUNC(DEQUOTE(&method))));;
     %IF &dist^= %THEN   %LET dist   = %SYSFUNC(UPCASE(%SYSFUNC(DEQUOTE(&dist))));;
