@@ -259,6 +259,7 @@ SuperLearner:
                      quietwarning=TRUE,
                      quietnotes=TRUE,
                      timer=TRUE, /* suppress notes being printed to the log */
+                     forcer=FALSE, 
                      /* deprecated */
                      getfoldrisks=,
                      predvar= &predvar ,
@@ -359,13 +360,14 @@ main work horse macros: _SuperLearner and _CVSuperLearner;
                      runchecks=FALSE, /*check for missing data, proper distribution settings, case of parameter values*/
                      checkvalid=FALSE,  /*remove learners that produce missing values */
                      logreport=FALSE,   /* report useful information, e.g. SL coefficients to the sas log */
-                     printfolds=FALSE,  /*report fold of folds in log */
+                     printfolds=TRUE,  /*report fold of folds in log */
                      verbose=FALSE,     /* print out a few extra things*/
                      speedup=FALSE,       /* do some things to make for faster computation */
                      simple=FALSE,      /* if true, print out a note in final summary about speed boost with workhorse macro */
                      quietwarning=FALSE, /* suppress some warnings being printed to the log */
                      quietnotes=FALSE, /* suppress notes being printed to the log */
                      timer=FALSE, /* suppress notes being printed to the log */
+                     forcer=FALSE, /* if true, will force re-install current version of all r packages called by the macro + dependencies  */
                      /*deprecated*/
                      getfoldrisks=,   /* report fold specific risks - too slow to use regularly */
                      predvar= ,
@@ -447,6 +449,8 @@ main work horse macros: _SuperLearner and _CVSuperLearner;
     %END;
     *install r packages if needed;
     %__installR();
+    *or force install;
+    %IF &forcer=TRUE %THEN %__forceinstallR();;
    
     %IF &predvar = AND &Y = %THEN %DO;
      %__badSLerror(must set 'Y' to the name of the variable you wish to predict);
@@ -1135,7 +1139,10 @@ RUN;
    %DO %WHILE(%SCAN(&LIBRARY, &l_l)^=);
      %LET book=%SCAN(&LIBRARY, &l_l);
      %IF %SUBSTR(&book, 1,2)=r_ %THEN %DO;
-       %IF &rinst=FALSE %THEN %__SLnote(%str(R needs to be installed and Rlang system option must be enabled in SAS. See http://documentation.sas.com/?docsetId=imlug&docsetTarget=imlug_r_sect003.htm&docsetVersion=14.3&locale=en for details.));
+       %IF &rinst=FALSE %THEN %DO;
+          %__SLwarning(%str(Please note that R learners are case sensitive, so check the case of your variable names if you get strange errors from PROC IML/R.));
+          %__SLnote(%str(R needs to be installed and Rlang system option must be enabled in SAS. See http://documentation.sas.com/?docsetId=imlug&docsetTarget=imlug_r_sect003.htm&docsetVersion=14.3&locale=en for details.));
+       %END;
        %LET rinst=TRUE;
        %LET _pkg = &package;
        %IF &_pkg= %THEN %DO;
@@ -1167,6 +1174,54 @@ RUN;
     %LET l_l = %EVAL(&l_l + 1);
    %END; *scan l;
 %MEND __installR;
+
+%MACRO __forceinstallR(package);
+  %LOCAL _pkg;
+  /* note: this function can be called directly to install an R package where sas will find it */
+  %__SLnote(%STR(__installR: Installing R packages if necessary. ));
+  %LET rinst=FALSE;
+   FILENAME instcode TEMP; *rsubmit requires use of include statement with code from file;
+   %LET rcodea = %STR(SUBMIT / r;);
+   %LET rcodec = %STR(ENDSUBMIT;);
+   %LET l_l = 1;
+   %DO %WHILE(%SCAN(&LIBRARY, &l_l)^=);
+     %LET book=%SCAN(&LIBRARY, &l_l);
+     %IF %SUBSTR(&book, 1,2)=r_ %THEN %DO;
+       %IF &rinst=FALSE %THEN %DO;
+          %__SLwarning(%str(Please note that R learners are case sensitive, so check the case of your variable names if you get strange errors from PROC IML/R.));
+          %__SLnote(%str(R needs to be installed and Rlang system option must be enabled in SAS. See http://documentation.sas.com/?docsetId=imlug&docsetTarget=imlug_r_sect003.htm&docsetVersion=14.3&locale=en for details.));
+       %END;
+       %LET rinst=TRUE;
+       %LET _pkg = &package;
+       %IF &_pkg= %THEN %DO;
+         %IF &book=r_rf %THEN %LET _pkg=randomForest;;
+         %IF &book=r_bart %THEN %LET _pkg=dbarts;;
+         %IF &book=r_mars %THEN %LET _pkg=earth;;
+         %IF &book=r_bagging %THEN %LET _pkg=ipred;;
+         %IF &book=r_polymars %THEN %LET _pkg=polspline;;
+         %IF &book=r_boost %THEN %LET _pkg=xgboost;;
+         %IF &book=r_svm %THEN %LET _pkg=e1071;;
+         %IF &book=r_dsa %THEN %LET _pkg=partDSA;;
+         %IF &book=r_gam %THEN %LET _pkg=gam;;
+         %IF &book=r_lasso %THEN %LET _pkg=glmnet;;
+         %IF &book=r_enet %THEN %LET _pkg=glmnet;;
+         %IF &book=r_ridge %THEN %LET _pkg=glmnet;;
+         %IF &book=r_rpart %THEN %LET _pkg=rpart;;
+         %IF &book=r_rpartprune %THEN %LET _pkg=rpart;;
+         %IF &book=r_sl %THEN %LET _pkg=SuperLearner;;
+       %END;
+       %LET rcodeb = %STR(install.packages(%"&_pkg%", repos = %"https://cran.mtu.edu%", dependencies=TRUE));
+       DATA _null_;
+        FILE instcode;
+        PUT "&rcodea";PUT "&rcodeb";PUT "&rcodec";
+       RUN;
+       PROC IML;
+        %IF &_pkg^= %THEN %INCLUDE instcode;;
+       QUIT;
+     %END; *any r func;
+    %LET l_l = %EVAL(&l_l + 1);
+   %END; *scan l;
+%MEND __forceinstallR;
 
 * special functions for gam;
 
@@ -1203,7 +1258,7 @@ RUN;
   %END;
 %MEND;
 
-%MACRO __gamplspline(vars=, degree=);
+%MACRO __gamplspline(vars, degree=);
   %LOCAL gami __gamv;
   %LET gamI = 1;
   %DO %WHILE (%SCAN(&vars, &gami)~=);
