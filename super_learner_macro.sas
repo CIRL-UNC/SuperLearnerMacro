@@ -80,7 +80,7 @@ This programs structure is:
                      outdata=sl_out,
                      dist=GAUSSIAN,
                      library= glm, 
-                     trtstrat=false, 
+                     trtstrat=FALSE, 
                      folds=10, 
                      method=NNLS,
                      /* deprecated */
@@ -413,6 +413,7 @@ main work horse macros: _SuperLearner and _CVSuperLearner;
     %END;
        
     *allow for some variation in how macro is called;
+    %IF &trtstrat^= %LET trtstrat %UPCASE(&trtstrat);
     %IF &risk^= %THEN   %LET risk   = %SYSFUNC(UPCASE(%SYSFUNC(DEQUOTE(&risk))));;
     %IF &method^= %THEN %LET method = %SYSFUNC(UPCASE(%SYSFUNC(DEQUOTE(&method))));;
     %IF &dist^= %THEN   %LET dist   = %SYSFUNC(UPCASE(%SYSFUNC(DEQUOTE(&dist))));;
@@ -1208,8 +1209,8 @@ RUN;
   %DO %WHILE (%SCAN(&vars, &gami)~=);
     %LET __gamv = %SCAN(&vars, &gami);
     /*%__SLnote(%str((GAMPL) Creating spline for &__gamv))*/
-    /*SPLINE(&__gamV, MAXDF=&DEGREE)*/
-    SPLINE(&__gamV)
+    %IF &DEGREE^= %THEN SPLINE(&__gamV / DF=&degree);
+    %IF &DEGREE= %THEN SPLINE(&__gamV);
     %LET gamI = %EVAL(&gami + 1);
   %END;
 %MEND;
@@ -1283,7 +1284,7 @@ RUN;
   %IF %__FalseCheck(&checkvalid) %THEN %LET droplib = none;
   OPTIONS MERGENOBY=WARN;
   %IF %STR(&indata) = %STR(&preddata) %THEN %LET preddata=;
-  OPTIONS LINESIZE = 109; *rudely set line size to my default;
+  OPTIONS LINESIZE = 109 PAGESIZE=80; *rudely set line size to my default;
   DATA _NULL_;
     SET &outresults END=eof;
     FILE PRINT;
@@ -1294,39 +1295,40 @@ RUN;
       PUT "|                                                                                              |";
       PUT "-----------------------------------------------------------------------------------------------";
       PUT "                                                                                      ";
-      PUT "  Super learner prediction of &Y: p_SL_full in dataset &outdata, ";  
-      PUT "  Making predictions of &Y in dataset &preddata";  
-      PUT "  Using predictors: &predictors                                                       ";
-      PUT "  Training data: &indata (N=&n)";  
-      PUT "  Using &folds fold cross-validation";  
-      PUT "  Super learner library: &library";  
-      PUT "  Dropped library members (if any - check algorithm/spelling problems): &droplib";;
+      PUT "  Super learner predictions 'p_SL_full' are in the dataset &outdata ";  
+      PUT "    Making predictions of: &Y";  
+      PUT "    Using predictors: %SYSFUNC(COMPBL(&predictors));                         ";
+      PUT "    Training data: &indata (N=&n)";  
+      %IF %STR(&indata) ^= %STR(&preddata) %THEN PUT "    Testing/validation data: &preddata";;
       PUT "                                                                                      ";
+      PUT "  Super learner library: %SYSFUNC(COMPBL(&library))";  
+      %IF &droplib^= %THEN PUT "  Dropped library members (check SAS log): &droplib";;
       PUT "  Assumed distribution: &dist                                                      ";
       PUT "  Method: &method                                            ";
+      PUT "  Cross validation folds: &folds                                            ";
       PUT "  Seed: &slseed                                            ";
       %IF &weight^= %THEN PUT "  Weights: &weight                                            ";;
-      PUT "  Note: to use results from individual learners in the library  ";
-      PUT "        please use 'p_[learner]_full' variables        ";
+      PUT "  Note: to use predictions from individual learners in the library  ";
+      PUT "        please use the 'p_[learner]_full' variables in the dataset &outdata ";
       PUT "  Note: SAS Enterprise miner software must be installed to use certain learners   ";
       PUT "                                                                                      ";
       %IF %__TrueCheck(&simple) %THEN %DO;
-        PUT "  For speed gains (with less error checking and printing), use the %NRSTR(%_)SuperLearner macro: ";
-        PUT "    Example: %NRSTR(%_)SuperLearner(Y=&Y, intvars= &intvars, binary_predictors= &binary_predictors,";
-        PUT "             ordinal_predictors= &ordinal_predictors, nominal_predictors= &nominal_predictors, continuous_predictors= &continuous_predictors,";
-        PUT "             indata= &indata, preddata= &preddata, outdata= &outdata, dist=&dist, ";
+        PUT "  For speed gains (and fewer error checks) and more options, use the %NRSTR(%_)SuperLearner macro: ";
+        PUT "    Example: %NRSTR(%_)SuperLearner(Y=&Y, intvars=&intvars, binary_predictors=&binary_predictors,";
+        PUT "             ordinal_predictors=&ordinal_predictors, nominal_predictors=&nominal_predictors, continuous_predictors=&continuous_predictors,";
+        PUT "             indata=&indata, preddata=&preddata, outdata=&outdata, outresults=&outresults, ";
         PUT "             library=%str(&library), ";
-        PUT "             trtstrat=&trtstrat , folds=&folds,  method=&method, slridgepen=&slridgepen,";
-        PUT "             seed=&slseed, outresults=sl_summary, printres=TRUE, timer=TRUE,"  ;   
-        PUT "             quietnotes=TRUE, quietwarning=TRUE)"  ;   
+        PUT "             folds=&folds, dist=&dist, method=&method, seed=&slseed,";
+        PUT "             trtstrat=&trtstrat, outresults=sl_summary, slridgepen=&slridgepen,"  ;   
+        PUT "             printres=TRUE, timer=TRUE, quietnotes=TRUE, quietwarning=TRUE)"  ;   
       %END;
- 	  PUT; PUT;
+      PUT "                                                                                      ";
       PUT "Super learner coefficients, &folds.-fold cross validated risk/expected loss";
       PUT "  ---------------------------------------------";
       PUT "    Learner      Coefficient   CV risk";
       PUT "  ---------------------------------------------";
     END;
-    PUT @5 learner @15 '|'  @17 coefficient 8.5 @31 cvrisk 8.5 ;
+    PUT @5 learner @17 coefficient 8.5 @31 cvrisk 8.5 ;
     IF eof THEN DO;
       PUT "  ---------------------------------------------";
       PUT "------------------------------------------------------------------------------------------------";
@@ -2406,7 +2408,7 @@ RUN;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
-    MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors, 3); / 
+    MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors); / 
      DIST=BINOMIAL;
     ID _all_;
     OUTPUT OUT = &OUTDATA(RENAME=(PRED = &_pvar)) PREDICTED;
@@ -2441,7 +2443,7 @@ RUN;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
-    MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors, 3); / 
+    MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors); / 
      DIST=BINOMIAL;
    ID _all_;
    OUTPUT OUT = &OUTDATA(RENAME=(PRED = &_pvar)) PREDICTED;
@@ -2477,7 +2479,7 @@ RUN;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
-    MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors, 3); / 
+    MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors); / 
      DIST=GAUSSIAN;
    ID _all_;
    OUTPUT OUT = &OUTDATA(RENAME=(PRED = &_pvar)) PREDICTED;
@@ -2512,7 +2514,7 @@ RUN;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
-    MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors &SLIXterms) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors, 3); / 
+    MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors &SLIXterms) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors); / 
      DIST=GAUSSIAN;
    ID _all_;
    OUTPUT OUT = &OUTDATA(RENAME=(PRED = &_pvar)) PREDICTED;

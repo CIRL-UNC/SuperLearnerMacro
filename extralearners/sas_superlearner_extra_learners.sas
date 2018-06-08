@@ -179,22 +179,22 @@ nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
 
 
 /******************************************************************************************
-generalized additive models:
- df = 2, 3, or 4
+generalized additive models: gampl procedure
+ df = 3 to 8 (2 causes errors for some reason)
 ******************************************************************************************/
-%MACRO gampl2_cn(
+%MACRO gampltempl_cn(deg=,
                 Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
 );
   /* GENERALIZED ADDITIVE MODEL for continuous variable (using alternative sas proc) */
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
   %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to LINREG, but slower));;
-  %LET _pvar = p_gampl2&SUFF;
+  %LET _pvar = p_gampl&deg&SUFF;
   PROC GAMPL DATA = &indata PLIKEOPTIONS(TECH=QUANEW);
    ODS SELECT NONE;
      %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
 
-   MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors, 2); / 
+   MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors, &deg); / 
      DIST=GAUSSIAN;
    ID _all_;
    OUTPUT OUT = &OUTDATA(RENAME=(PRED = &_pvar)) PREDICTED;
@@ -213,125 +213,59 @@ generalized additive models:
    IF &_pvar = . THEN  &_pvar = p_extrapolate;
   RUN;
   %END;
-%MEND gampl2_cn;
+%MEND gampltempl_cn;
 
-%MACRO gampl3_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
-);
-  /* GENERALIZED ADDITIVE MODEL for continuous variable (using alternative sas proc) */
-  %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
-  %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to LINREG, but slower));;
-  %LET _pvar = p_gampl3&SUFF;
-  PROC GAMPL DATA = &indata PLIKEOPTIONS(TECH=QUANEW);
-   ODS SELECT NONE;
-     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
 
-   MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors, 3); / 
-     DIST=GAUSSIAN;
-   ID _all_;
-   OUTPUT OUT = &OUTDATA(RENAME=(PRED = &_pvar)) PREDICTED;
-  RUN;
-  %__CheckSLPredMissing(Y= &_pvar, indata=&OUTDATA);
-  %IF %EVAL(&SLPredMiss.>0) %THEN %DO;
-    * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
-  * temp solution is to do a linear extrapolation to fill in missing values;
-  PROC GENMOD DATA = &OUTDATA;
-  %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
-   MODEL  &_pvar = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &intxterms / LINK=ID D=NORMAL;
-   OUTPUT OUT = &OUTDATA(DROP=) PRED=P_EXTRAPOLATE;
-  RUN;
-  DATA &outdata(DROP=p_extrapolate);
-   SET &outdata;
-   IF &_pvar = . THEN  &_pvar = p_extrapolate;
-  RUN;
-  %END;
+
+%MACRO gampl3_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
+      %gampltempl_cn(deg=3, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
 %MEND gampl3_cn;
 
-%MACRO gampl4_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
-);
-  /* GENERALIZED ADDITIVE MODEL for continuous variable (using alternative sas proc) */
-  %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
-  %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to LINREG, but slower));;
-  %LET _pvar = p_gampl4&SUFF;
-  PROC GAMPL DATA = &indata PLIKEOPTIONS(TECH=QUANEW);
-   ODS SELECT NONE;
-     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
-
-   MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors, 4); / 
-     DIST=GAUSSIAN;
-   ID _all_;
-   OUTPUT OUT = &OUTDATA(RENAME=(PRED = &_pvar)) PREDICTED;
-  RUN;
-  %__CheckSLPredMissing(Y= &_pvar, indata=&OUTDATA);
-  %IF %EVAL(&SLPredMiss.>0) %THEN %DO;
-    * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
-  * temp solution is to do a linear extrapolation to fill in missing values;
-  PROC GENMOD DATA = &OUTDATA;
-  %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
-   MODEL  &_pvar = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &intxterms / LINK=ID D=NORMAL;
-   OUTPUT OUT = &OUTDATA(DROP=) PRED=P_EXTRAPOLATE;
-  RUN;
-  DATA &outdata(DROP=p_extrapolate);
-   SET &outdata;
-   IF &_pvar = . THEN  &_pvar = p_extrapolate;
-  RUN;
-  %END;
+%MACRO gampl4_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
+      %gampltempl_cn(deg=4, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
 %MEND gampl4_cn;
 
-%MACRO gampl5_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
-);
-  /* GENERALIZED ADDITIVE MODEL for continuous variable (using alternative sas proc) */
-  %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
-  %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to LINREG, but slower));;
-  %LET _pvar = p_gampl5&SUFF;
-  PROC GAMPL DATA = &indata PLIKEOPTIONS(TECH=QUANEW);
-   ODS SELECT NONE;
-     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
-
-   MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors, 5); / 
-     DIST=GAUSSIAN;
-   ID _all_;
-   OUTPUT OUT = &OUTDATA(RENAME=(PRED = &_pvar)) PREDICTED;
-  RUN;
-  %__CheckSLPredMissing(Y= &_pvar, indata=&OUTDATA);
-  %IF %EVAL(&SLPredMiss.>0) %THEN %DO;
-    * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
-  * temp solution is to do a linear extrapolation to fill in missing values;
-  PROC GENMOD DATA = &OUTDATA;
-  %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
-   MODEL  &_pvar = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &intxterms / LINK=ID D=NORMAL;
-   OUTPUT OUT = &OUTDATA(DROP=) PRED=P_EXTRAPOLATE;
-  RUN;
-  DATA &outdata(DROP=p_extrapolate);
-   SET &outdata;
-   IF &_pvar = . THEN  &_pvar = p_extrapolate;
-  RUN;
-  %END;
+%MACRO gampl5_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
+      %gampltempl_cn(deg=5, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
 %MEND gampl5_cn;
+
+%MACRO gampl6_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
+      %gampltempl_cn(deg=6, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+%MEND gampl6_cn;
+
+%MACRO gampl7_cn( Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
+      %gampltempl_cn(deg=7,Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+%MEND gampl7_cn;
+
+%MACRO gampl8_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
+      %gampltempl_cn(deg=8, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+%MEND gampl8_cn;
 
 
 /******************************************************************************************
 generalized additive models (proc gam):
- df = 2, 3, or 4
+ df = 2 - 8 
 ******************************************************************************************/
 
-%MACRO gam2_cn(
+
+%MACRO gamtempl_cn(deg=,
                 Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
 );
   /* GENERALIZED ADDITIVE MODEL for continuous variable (normal assumption)*/
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
   %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to PROC REG, but slower));;
-  %LET _pvar = p_gam2&SUFF;
+  %LET _pvar = p_gam&deg&SUFF;
   PROC GAM DATA = &indata  DESCENDING;
    ODS SELECT NONE;
      %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
-   MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors ) %IF (&continuous_predictors~=) %THEN %__GAMSPLINE(&continuous_predictors, 2); / 
+   MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors ) %IF (&continuous_predictors~=) %THEN %__GAMSPLINE(&continuous_predictors, &deg); / 
      DIST=GAUSSIAN;
    OUTPUT OUT = &OUTDATA(RENAME=(P_&Y =  &_pvar) %IF (&continuous_predictors~=) %THEN %__gamdrop(&continuous_predictors);) PREDICTED;
   RUN;
@@ -349,100 +283,43 @@ generalized additive models (proc gam):
    IF  &_pvar = . THEN  &_pvar = p_extrapolate;
   RUN;
   %END;
+%MEND gamtempl_cn;
+
+
+%MACRO gam2_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
+      %gamtempl_cn(deg=2, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
 %MEND gam2_cn;
 
-%MACRO gam3_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
-);
-  /* GENERALIZED ADDITIVE MODEL for continuous variable (normal assumption)*/
-  %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
-  %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to PROC REG, but slower));;
-  %LET _pvar = p_gam3&SUFF;
-  PROC GAM DATA = &indata  DESCENDING;
-   ODS SELECT NONE;
-     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
-   MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors ) %IF (&continuous_predictors~=) %THEN %__GAMSPLINE(&continuous_predictors, 3); / 
-     DIST=GAUSSIAN;
-   OUTPUT OUT = &OUTDATA(RENAME=(P_&Y =  &_pvar) %IF (&continuous_predictors~=) %THEN %__gamdrop(&continuous_predictors);) PREDICTED;
-  RUN;
-  %__CheckSLPredMissing(Y= &_pvar, indata=&OUTDATA);
-  %IF %EVAL(&SLPredMiss.>0) %THEN %DO;
-    * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
-  * temp solution is to do a linear extrapolation to fill in missing values;
-  PROC GENMOD DATA = &OUTDATA;
-  %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
-   MODEL  &_pvar = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors  / LINK=ID D=NORMAL;
-   OUTPUT OUT = &OUTDATA(DROP=) PRED=P_EXTRAPOLATE;
-  RUN;
-  DATA &outdata(DROP=p_extrapolate);
-   SET &outdata;
-   IF  &_pvar = . THEN  &_pvar = p_extrapolate;
-  RUN;
-  %END;
+%MACRO gam3_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
+      %gamtempl_cn(deg=3, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
 %MEND gam3_cn;
 
-%MACRO gam4_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
-);
-  /* GENERALIZED ADDITIVE MODEL for continuous variable (normal assumption)*/
-  %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
-  %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to PROC REG, but slower));;
-  %LET _pvar = p_gam4&SUFF;
-  PROC GAM DATA = &indata  DESCENDING;
-   ODS SELECT NONE;
-     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
-   MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors ) %IF (&continuous_predictors~=) %THEN %__GAMSPLINE(&continuous_predictors, 4); / 
-     DIST=GAUSSIAN;
-   OUTPUT OUT = &OUTDATA(RENAME=(P_&Y =  &_pvar) %IF (&continuous_predictors~=) %THEN %__gamdrop(&continuous_predictors);) PREDICTED;
-  RUN;
-  %__CheckSLPredMissing(Y= &_pvar, indata=&OUTDATA);
-  %IF %EVAL(&SLPredMiss.>0) %THEN %DO;
-    * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
-  * temp solution is to do a linear extrapolation to fill in missing values;
-  PROC GENMOD DATA = &OUTDATA;
-  %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
-   MODEL  &_pvar = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors  / LINK=ID D=NORMAL;
-   OUTPUT OUT = &OUTDATA(DROP=) PRED=P_EXTRAPOLATE;
-  RUN;
-  DATA &outdata(DROP=p_extrapolate);
-   SET &outdata;
-   IF  &_pvar = . THEN  &_pvar = p_extrapolate;
-  RUN;
-  %END;
+%MACRO gam4_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
+      %gamtempl_cn(deg=4, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
 %MEND gam4_cn;
 
-%MACRO gam5_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
-);
-  /* GENERALIZED ADDITIVE MODEL for continuous variable (normal assumption)*/
-  %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
-  %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to PROC REG, but slower));;
-  %LET _pvar = p_gam5&SUFF;
-  PROC GAM DATA = &indata  DESCENDING;
-   ODS SELECT NONE;
-     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
-   MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors ) %IF (&continuous_predictors~=) %THEN %__GAMSPLINE(&continuous_predictors, 4); / 
-     DIST=GAUSSIAN;
-   OUTPUT OUT = &OUTDATA(RENAME=(P_&Y =  &_pvar) %IF (&continuous_predictors~=) %THEN %__gamdrop(&continuous_predictors);) PREDICTED;
-  RUN;
-  %__CheckSLPredMissing(Y= &_pvar, indata=&OUTDATA);
-  %IF %EVAL(&SLPredMiss.>0) %THEN %DO;
-    * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
-  * temp solution is to do a linear extrapolation to fill in missing values;
-  PROC GENMOD DATA = &OUTDATA;
-  %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
-   MODEL  &_pvar = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors  / LINK=ID D=NORMAL;
-   OUTPUT OUT = &OUTDATA(DROP=) PRED=P_EXTRAPOLATE;
-  RUN;
-  DATA &outdata(DROP=p_extrapolate);
-   SET &outdata;
-   IF  &_pvar = . THEN  &_pvar = p_extrapolate;
-  RUN;
-  %END;
+%MACRO gam5_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
+      %gamtempl_cn(deg=5, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
 %MEND gam5_cn;
+
+%MACRO gam6_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
+      %gamtempl_cn(deg=6, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+%MEND gam6_cn;
+
+%MACRO gam7_cn( Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
+      %gamtempl_cn(deg=7,Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+%MEND gam7_cn;
+
+%MACRO gam8_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
+      %gamtempl_cn(deg=8, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+%MEND gam8_cn;
 /******************************************************************************************
 neural network:
  size 2, 3, 4, 5 (number of units in hidden layer)
