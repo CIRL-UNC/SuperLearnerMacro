@@ -5223,9 +5223,9 @@ RUN;
     %IF &weight^= %THEN %LET wt= &weight *;;
     ODS EXCLUDE ALL; ODS NORESULTS;
     PROC HPNLMOD DATA=__sltm004_  ABSGCONV=1E-16 
-     %IF (&method IN( BCCLOGLIK BNNLOGLIK BLOGLIK BNNLAE BCCLAE BLAE BOLS BNNLS BCCLS BCCRIDGE BNNRIGE BRIDGE BCCLASSO BNNLASSO BLASSO)) %THEN TECH=QUANEW; 
+     %IF (&method IN( BNNLOGLIK BCCLOGLIK BLOGLIK BNNLS BCCLS BOLS BNNRIDGE BCCRIDGE BRIDGE BNNLASSO BCCLASSO BLASSO BNNLAE BCCLAE BLAE )) %THEN TECH=QUANEW; 
      %ELSE %IF (&method IN( BNNLOGLIK )) %THEN TECH=TRUREG;  
-     %ELSE TECH=LEVMAR;;
+     %ELSE /*TECH=LEVMAR*/;;
       PARMS 
          %LET l_l = 1; 
           %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); __slcoef_&l_l =%SYSEVALF(1/&LIBCOUNT)  %LET l_l = %EVAL(&l_l +1); %END;;
@@ -5242,7 +5242,6 @@ RUN;
          r =  (&y*LOG(MIN(MAX(__slp, &TRIMBOUND), 1-&TRIMBOUND)) + (1-&y)*LOG(MIN(MAX(1-__slp, &TRIMBOUND), 1-&TRIMBOUND)));
          dummy=0;
         MODEL dummy ~ GENERAL(&WT r);
-        *MODEL &y ~ BINARY(__SLP);
        %END;
        %IF (&method IN(BNNLS BCCLS BOLS)) %THEN %DO;
          * ls methods;
@@ -5250,11 +5249,10 @@ RUN;
         f =  &WT ( 0
           %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); + __slcoef_&l_l * __v&l_l  %LET l_l = %EVAL(&l_l +1); %END;
           );
-        *MODEL &y ~ RESIDUAL(&WT f);
         MODEL &y ~ NORMAL( f, sig2);
        %END;
        %IF (&method IN(BNNRIDGE BCCRIDGE BRIDGE)) %THEN %DO;
-         * ridge methods;
+         * ridge methods, penalization by offset;
         %LET l_l = 1;
         f = (Y-( 0
           %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); + __slcoef_&l_l * __v&l_l  %LET l_l = %EVAL(&l_l +1); %END;
@@ -5268,7 +5266,7 @@ RUN;
         MODEL dummy ~ GENERAL(-&WT f - pen);
        %END;
        %IF (&method IN(BNNLASSO BCCLASSO BLASSO)) %THEN %DO;
-         * LASSO methods;
+         * LASSO methods, penalization by offset;
         %LET l_l = 1;
         f = (Y-( 0
           %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); + __slcoef_&l_l * __v&l_l  %LET l_l = %EVAL(&l_l +1); %END;
