@@ -1,8 +1,8 @@
-%PUT super learner macro v0.15.5 (pre-release 1.0);
+%PUT super learner macro v0.15.6 (pre-release 1.0);
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version:     0.15.5 (pre-release 1.0)
+* Version:     0.15.6 (pre-release 1.0)
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS (tested on sas 9.4 TS1M3)
@@ -2277,7 +2277,7 @@ RUN;
     %IF &WEIGHT^= %THEN FREQ &weight;; *weights possibly truncated to integer values;
       %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors &SLIXterms) %IF (&continuous_predictors~=) %THEN %__GAMSPLINE(&continuous_predictors, 3); / 
-      DIST=BINOMIAL MAXITER=150 MAXITSCORE=300;
+      DIST=BINOMIAL MAXITER=150 MAXITSCORE=300 ANODEV=NONE;
     OUTPUT OUT = &OUTDATA(RENAME=(P_&Y =  &_pvar) %IF (&continuous_predictors~=) %THEN %__gamdrop(&continuous_predictors);) PREDICTED;
   * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
   * temp solution is to do a linear extrapolation to fill in missing values;
@@ -2309,7 +2309,7 @@ RUN;
       %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
      %IF &WEIGHT^= %THEN FREQ &weight;; *weights possibly truncated to integer values;
      MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors &SLIXterms) %IF (&continuous_predictors~=) %THEN %__GAMSPLINE(&continuous_predictors, 3); / 
-      DIST=BINOMIAL MAXITER=150 MAXITSCORE=300;
+      DIST=BINOMIAL MAXITER=150 MAXITSCORE=300 ANODEV=NONE;
     OUTPUT OUT = &OUTDATA(RENAME=(P_&Y =  &_pvar) %IF (&continuous_predictors~=) %THEN %__gamdrop(&continuous_predictors);) PREDICTED;
     * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
     * temp solution is to do a linear extrapolation to fill in missing values;
@@ -2341,7 +2341,7 @@ RUN;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN FREQ &weight;; *weights possibly truncated to integer values;
     MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors ) %IF (&continuous_predictors~=) %THEN %__GAMSPLINE(&continuous_predictors, 3); / 
-     DIST=GAUSSIAN MAXITER=150 MAXITSCORE=300;
+     DIST=GAUSSIAN MAXITER=150 MAXITSCORE=300 ANODEV=NONE;
    OUTPUT OUT = &OUTDATA(RENAME=(P_&Y =  &_pvar) %IF (&continuous_predictors~=) %THEN %__gamdrop(&continuous_predictors);) PREDICTED;
   RUN;
   %__CheckSLPredMissing(Y= &_pvar, indata=&OUTDATA);
@@ -2375,7 +2375,7 @@ RUN;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN FREQ &weight;; *weights possibly truncated to integer values;
     MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors &SLIXterms) %IF (&continuous_predictors~=) %THEN %__GAMSPLINE(&continuous_predictors, 3); / 
-     DIST=GAUSSIAN MAXITER=150 MAXITSCORE=300;
+     DIST=GAUSSIAN MAXITER=150 MAXITSCORE=300 ANODEV=NONE;
    OUTPUT OUT = &OUTDATA(RENAME=(P_&Y =  &_pvar) %IF (&continuous_predictors~=) %THEN %__gamdrop(&continuous_predictors);) PREDICTED;
   RUN;
   %__CheckSLPredMissing(Y= &_pvar, indata=&OUTDATA);

@@ -1,4 +1,4 @@
-%PUT extra_learners v1.0.2;
+%PUT extra_learners v1.0.5;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: sas_superlearner_extra_learners.sas
@@ -266,7 +266,7 @@ generalized additive models (proc gam):
    ODS SELECT NONE;
      %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
    MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors ) %IF (&continuous_predictors~=) %THEN %__GAMSPLINE(&continuous_predictors, &deg); / 
-     DIST=GAUSSIAN;
+     DIST=GAUSSIAN MAXITER=150 MAXITSCORE=300 ANODEV=NONE;
    OUTPUT OUT = &OUTDATA(RENAME=(P_&Y =  &_pvar) %IF (&continuous_predictors~=) %THEN %__gamdrop(&continuous_predictors);) PREDICTED;
   RUN;
   %__CheckSLPredMissing(Y= &_pvar, indata=&OUTDATA);
