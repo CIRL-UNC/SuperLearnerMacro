@@ -396,7 +396,7 @@ sup {
 <li>suffixes: LS, RIDGE, LOGLIK, LAE, LASSO, where
 
 <ul>
-<li>LS methods use an L2 loss function (least squares - OLS, NNLS, CCLS, BOLS, BNNLS, BCCLS)</li>
+<li>LS methods use an L2 loss function (least squares - OLS, NNLS, CCLS, BOLS, BNNLS, BCCLS). This method selects the super learner fit by minimizing the (cross-validated) mean-squared error (GAUSSIAN distribution) or the Brier score (BERNOULLI distribution). </li>
 <li>RIDGE methods use an L2 penalized L2 loss function (ridge regression - RIDGE, NNRIDGE, CCRIDGE, BRIDGE, BNNRIDGE, BCCRIDGE). Penalization level can be modified in the %_SuperLearner macro via the <strong>slridgepen</strong> parameter (default 0.3).</li>
 <li>LOGLIK methods use a loss function corresponding to the binomial likelihood with a logit link function (logistic regression - LOGLIK, NNLOGLIK, CCLOGLIK, BLOGLIK, BNNLOGLIK, BCCLOGLIK)</li>
 <li>LAE methods [experimental] use an L1 loss function (least absolute error), which will not penalize outliers as much as L2 methods, and is also non-differentiable at the minimum (median regression - LAE, NNLAE, CCLAE, BLAE, BNNLAE, BCCLAE) which may cause computational difficulties</li>
@@ -441,31 +441,35 @@ sup {
 
 <p>This is a version of the %CVSuperLearner macro for advanced users that may be somewhat faster due to reduced error checking, and offers finer level controls. See the source code for further tuning options.</p>
 
-<h4 id="toc_9">Further reading</h4>
+<h4 id="toc_9">Getting errors?</h4>
 
-<h5 id="toc_10">About this macro</h5>
+<p>See the <a href="https://cirl-unc.github.io/SuperLearnerMacro/docs/TroubleShooting.html" title="Trouble shooting">Troubleshooting help</a></p>
+
+<h4 id="toc_10">Further reading</h4>
+
+<h5 id="toc_11">About this macro</h5>
 
 <ol>
 <li>A. P. Keil. Super Learning in the SAS system. ArXiv e-prints, May 2018. <a href="https://arxiv.org/abs/1805.08058">https://arxiv.org/abs/1805.08058</a></li>
 </ol>
 
-<h5 id="toc_11">About stacking</h5>
+<h5 id="toc_12">About stacking</h5>
 
 <ol>
 <li><p>D. H. Wolpert. Stacked generalization. Neural networks, 5(2):241–259, 1992.</p></li>
 <li><p>L. Breiman. Stacked regressions. Machine learning, 24(1):49–64, 1996.</p></li>
 </ol>
 
-<h5 id="toc_12">About super learner</h5>
+<h5 id="toc_13">About super learner</h5>
 
 <ol>
 <li><p>M. J. van der Laan, E. C. Polley, and A. E. Hubbard. Super learner. Report, Division of Biostatistics, University of California, Berkeley, 2007.</p></li>
 <li><p>E. C. Polley and M. J. van der Laan. Super learner in prediction. Report, Division of Biostatistics, University of California, Berkeley, 2010.</p></li>
 </ol>
 
-<h4 id="toc_13">Acknowledgements</h4>
+<h4 id="toc_14">Acknowledgements</h4>
 
-<p>This work was only possible with valuable advice and beta testing from the following people: Stephen R Cole, Jessie K Edwards, Katie M O&#39;Brien, Marie Stoner, Jennifer Winston and many others</p>
+<p>This work was only possible with valuable advice and beta testing from the following people: Stephen R Cole, Jessie K Edwards, Katie M O&#39;Brien, Eric Polley, Marie Stoner, Jennifer Winston and many others</p>
 
 <p><strong><a href="https://cirl-unc.github.io/SuperLearnerMacro" title="Home">Super learner macro home page</a></strong></p>
 

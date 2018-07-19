@@ -5,7 +5,7 @@
 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<title>availablelearners</title>
+<title>TroubleShooting</title>
 
 
 <style type="text/css">
@@ -317,75 +317,34 @@ sup {
 
 <h1 id="toc_0">SuperLearnerMacro</h1>
 
-<h3 id="toc_1">Available Learners</h3>
+<p>The super learner macro was designed to give useful error codes when the errors could be anticipated ahead of time. Generally errors come down to typos when calling the code (e.g. using <strong>logti</strong> rather than <strong>logit</strong> in the library) or forgetting a comma in between macro parameters. For troubleshooting errors, try the steps below:</p>
+
+<h3 id="toc_1">Troubleshooting</h3>
 
 <ol>
-<li><h4 id="toc_2">Learners based on SAS procedures ( * denotes SAS Enterprise Miner/EM High Performance procedure)</h4>
-
-<p><strong>learner</strong>: description (SAS procedure)</p>
+<li><strong>Super learner gives an error that has &ldquo;super learner&rdquo; in the note that accompanies the error (check sas log)</strong>
 
 <ul>
-<li><strong>back</strong>: backward selection by BIC (HPGENSELECT)</li>
-<li>*<strong>bagging</strong>: bootstrap aggregation of regression/classification trees (ARBOR)</li>
-<li>*<strong>bayesnet</strong>: Bayesian network [binary only] (HPBNET)</li>
-<li><strong>boxcox</strong>: Box-Cox transformation of target variables, positively bound continuous Y only (TRANSREG)</li>
-<li>*<strong>boost</strong>: Gradient boosting of regression/classification trees (ARBOR)</li>
-<li><strong>cvcart</strong>: classification/regression tree with cross validated selection of final tree based on cost-complexity (HPSPLIT)</li>
-<li><strong>cart</strong>: classification/regression tree, no cross validation (HPSPLIT)</li>
-<li>*<strong>deepnn</strong>: deep neural net with 5 hidden layers of 50 nodes each (DMDB/NEURAL)</li>
-<li><strong>enet</strong>: elastic net - warning for binary outcome: does not respect [0,1] probability space (GLMSELECT)</li>
-<li><strong>gam</strong>: generalized additive model with 3 df splines on all continuous variables (GAM)</li>
-<li><strong>gampl</strong>: faster generalized additive model with 3 df splines on all continuous variables (GAMPL)</li>
-<li><strong>glm</strong>: linear or logistic regression: slower wrappers for logit and linreg (GENMOD/REG)</li>
-<li><strong>knn</strong>: [bernoulli only] k-nearest neighbors classification (DISCRIM)</li>
-<li><strong>hpglm</strong>: main term logistic/linear regression with multithreading (HPLOGISTIC/HPREG)</li>
-<li><strong>hplar</strong>: least angle regression with multithreading - warning for binary outcome: does not respect [0,1] probability space (HPREG)</li>
-<li><strong>hplogit</strong>: main term logistic regression with multithreading (HPLOGISTIC)</li>
-<li><strong>hplinreg</strong>: main term linear regression with multithreading (HPREG)</li>
-<li><strong>lar</strong>: least angle regression - warning for binary outcome: does not respect [0,1] probability space (GLMSELECT)</li>
-<li><strong>lasso</strong>: least absolute shrinkage and selection operator with multithreading (HPGENSELECT)</li>
-<li><strong>lassob</strong>: LASSO with glmselect [use caution with binary variables] - may be appropriate for older sas versions (GLMSELECT)</li>
-<li><strong>lassocv</strong>: LASSO with cross-validated selection of shrinkage parameter [use caution with binary variables] - (GLMSELECT)</li>
-<li><strong>logit</strong>: main term logistic regression (GENMOD)</li>
-<li><strong>linreg</strong>: main term linear regression (REG)</li>
-<li><strong>mars</strong>: multivariate adaptive regression splines (ADAPTIVEREG)</li>
-<li><strong>mean</strong>: marginal mean of the prediction variable (GENMOD)</li>
-<li>*<strong>nn</strong>: single hidden layer neural net with 5 nodes (HPNEURAL)</li>
-<li>*<strong>nbayes</strong>: naive Bayes (HPBNET)</li>
-<li><strong>bspline</strong>: basis spline regression (TRANSREG)</li>
-<li><strong>pbspline</strong>: penalized basis spline regression [SINGLE CONTINUOUS PREDICTOR ONLY] (TRANSREG)</li>
-<li><strong>probit</strong>: main term probit regression (PROBIT)</li>
-<li><strong>ridge</strong>: ridge regression - warning for binary outcome: does not respect [0,1] probability space (REG)</li>
-<li><strong>quantreg</strong>: Quantile regression for the median - warning for binary outcome: does not respect [0,1] probability space (QUANTREG)</li>
-<li><strong>rf</strong>: random forest (HPFOREST)</li>
-<li><strong>rfoob</strong>: random forest, using out of bag predictions and modified selection criteria (HPFOREST)</li>
-<li>*<strong>sherwood</strong>: random forest, sampling with replacement (ARBOR)</li>
-<li><strong>swise</strong>: Stepwise model selection - may be appropriate alternative to lasso for older sas versions (HPGENSELECT)</li>
-</ul>
-
-<p>Also includes multiple learners that are identical to other learners but include all first order interaction terms:</p>
-
-<p><strong>backint</strong>, <strong>logitint</strong>, <strong>linregint</strong>, <strong>lassoint</strong>, <strong>lassobint</strong>, <strong>lassocvint</strong>, <strong>swiseint</strong>, <strong>larint</strong>, <strong>enetint</strong>, <strong>gamint</strong>, <strong>gamplint</strong>, <strong>marsint</strong>, <strong>probitint</strong>, <strong>hpglmint</strong>, <strong>hplarint</strong></p></li>
-<li><h4 id="toc_3">Learners based on R functions</h4>
-
-<p>A number of included R functions (requires SAS/IML and RLANG system option enabled (<a href="http://documentation.sas.com/?docsetId=imlug&amp;docsetTarget=imlug_r_sect003.htm&amp;docsetVersion=14.3&amp;locale=en">see here</a>) allow a limited set of learners in the R programming language. Provided that R is installed and the RLANG option properly enabled, the required packages will be automatically installed the first time the learner is called (if running the SuperLearner or CVSuperLearner macros (internet connection must be active)). In most cases, the default parameterization of each of these learners is identical to the parameterization given in the SuperLearner package in R, so using them with the %SuperLearner macro should give similar results to using them in R. NOTE: R learners are case sensitive, unlike SAS, so specification of Y and predictor variable names must have correct case.</p>
-
-<ul>
-<li><strong>r_bagging</strong>:  bootstrap aggregation of regression/classification trees (requires ipred package)</li>
-<li><strong>r_bart</strong>:  Bayesian additive regression/classification trees (requires dbarts package)</li>
-<li><strong>r_boost</strong>:  Gradient boosting regression/classification (requires xgboost package)</li>
-<li><strong>r_enet</strong>:  elastic net regression/classification with cross validated selection of shrinkage parameter (requires glmnet package)</li>
-<li><strong>r_gam</strong>:  generalized additive model (requires gam package)</li>
-<li><strong>r_lasso</strong>:  LASSO regression/classification with cross validated selection of shrinkage parameter (requires glmnet package)</li>
-<li><strong>r_mars</strong>: MARS - multivariate adaptive regression splines (requires earth package)</li>
-<li><strong>r_polymars</strong>: MARS - multivariate adaptive polynomial regression splines (requires polspline package)</li>
-<li><strong>r_rf</strong>: random forest using R superlearner defaults (requires randomForest package)</li>
-<li><strong>r_ridge</strong>:  ridge regression/classification with cross validated selection of shrinkage parameter (requires glmnet package)</li>
-<li><strong>r_rpart</strong>: CART - recursive partioning with no pruning (similar to <strong>cart</strong>) (requires rpart package)</li>
-<li><strong>r_rpartprune</strong>: CART - recursive partioning with pruning by complexity parameter selected through cross-validation (similar to <strong>cvcart</strong>) (requires rpart package)</li>
-<li><strong>r_sl</strong>:  R based super learner (using 10-fold cross-validation, NNLS method) with several default learners (glm, lasso, bart, rf, mars; requires SuperLearner package)</li>
-<li><strong>r_svm</strong>:  support vector machine regression/classification (requires e1071 package)</li>
+<li>The macro was written to make most error text explain the problem and give a possible solution. Follow the instructions and/or check for spelling errors or omitted commas in the call to the macro.</li>
 </ul></li>
+<li><strong>The macro is taking a long time to run</strong>
+
+<ul>
+<li>Is the dataset large? Super learner utilizes multiple, possibly slow algorithms and cross validation, which can be computationally intensive. For troubleshooting, try setting <em>folds</em> to a low number (e.g. 2) and keeping the library limited to one or two members (e.g. <strong>glm</strong> and <strong>cart</strong>). If it is still much slower than expected (e.g. it takes longer than fitting a glm 6 or 7 times), then try one of the steps below. If it speeds up as expected, then return <em>folds</em> to the default 10, add in additional library members and just wait patiently for results. Some potentially very slow learners are: <strong>loess</strong>, <strong>bspline</strong></li>
+<li>Do you have a continuous variable with only a few values? Use <em>continous_predictors, binary_predictors, ordinal_predictors</em>, and <em>nominal_predictors</em>, rather than <em>X</em> to specify your predictors. The macro will try to make guesses, but it can make mistakes if you have a lot of duplicate values of continuous variables and/or if the dataset is sorted by a continuous predictor. In such cases, the macro will think you have a nominal variable, and proceed as though every value of the continous variable should be treated as its own class - this can be very, very slow and will yield poor answers.</li>
+</ul></li>
+<li><strong>Errors related to running out of memory</strong>
+
+<ul>
+<li>Did this happen before super learner reached X out of X folds? (e.g. at 3 of 10 folds? - check SAS log). Try reducing the number of learners until you have identified which one caused the error. Candidates are: R based learners (since these run in memory), and <strong>gam</strong>.</li>
+<li>Did this happen after reaching the total number of folds (e.g. after reaching 10 of 10 folds? - check SAS log)? This likely means you have a large dataset. Try changing the <em>method</em> parameter by appending a &ldquo;B&rdquo; as a prefix (e.g. NNLS would become BNNLS). The default optimization routine in super learner can run out of memory but has been tested more thoroughly. The &ldquo;B&rdquo; (big) methods can handle much larger datasets.</li>
+</ul></li>
+<li><strong>Errors related to Newton-raphson algorithm or optimization failing</strong>
+
+<ul>
+<li>This can happen with some learners in some datasets. Try reducing the number of learners until you have identified which one caused the error. If you can, find a suitable, similar replacement algorithm (e.g. if this happens in <strong>gam</strong>, try using <strong>gampl</strong> or <strong>bspline</strong>). You can also change the predictors you are using - this generally occurs because you are are attempting to make predictions in a very sparse region of data.</li>
+</ul></li>
+<li><strong>Other, puzzling errors?</strong> Send a note to akeil@unc.edu with as much detail as possible, including the code you used to call the macro and text from the SAS log and any output produced by the macro.</li>
 </ol>
 
 <p><strong><a href="https://cirl-unc.github.io/SuperLearnerMacro/docs/superlearnerhelp.html" title="Main help page">Main help page</a></strong></p>

@@ -1,8 +1,8 @@
-%PUT super learner macro v0.15.6 (pre-release 1.0);
+%PUT super learner macro v1.0;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version:     0.15.6 (pre-release 1.0)
+* Version: 1.0
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS (tested on sas 9.4 TS1M3)
@@ -29,6 +29,9 @@ super learner macro: this is a macro for making predictions of a binary or conti
    
    More info on the algorithm can be found in section 3.3.2 of "Targeted Learning" by van Der Laan and Rose (1ed);
     specifically, this macro implements the algorithm shown in figure 3.2
+  This macro is accompanied by a manuscript:
+   Keil, A. P. (2018). Super Learning in the SAS system. arXiv preprint arXiv:1805.08058.
+     https://arxiv.org/abs/1805.08058
       
    Currently available learners: 
        linear model, logistic model, lasso (linear and logit), least angle regression, 
@@ -46,22 +49,8 @@ This programs structure is:
 * Keywords: prediction, causal inference, machine learning, gam, random forest, super learner, cross validation
 *           
 * Released under the GNU General Public License: http://www.gnu.org/copyleft/gpl.html
-* MAJOR UPDATES (MINOR UPDATES LISTED AT BOTTOM OF PROGRAM):    
- 2017-06-08: now allows prediction of continuous variables with auto-selection of prediction type
-             added simple example at end for continuous variable
- 2017-10-19: changed super learner prediction algorithm to use predictions from full data,
-              rather than cross-validated predictions (for consistency with TL book). Added
-              learners that automatically add first order interaction terms
- 2018-03-20: substantial cleanup to dataset handling, basic error checking implemented
- 2018-03-28: Added "method" parameter for getting coefficients, implements NNLS (R default, 
-              non-negative least squares) or CCLS (convex constraint least squares), OLS (least squares)
-              NNRIDGE, CCRIDGE, RIDGE (non-negative, convex constraint ridge [L2] penalized regression)
-              NNLOGLIK, CCLOGLIK, LOGLIK (non-negative, convex constraint binomial likelihood)
- 2018-04-07: Added by-processing and interventions in external data
- 2018-04-19: NNLAE, CCLAE, LAE (non-negative, convex constraint L1 loss function)
- 2018-04-28: Added CV super learner, some additional error recovery
- 2018-05-18: Enabled weighting 
- 2018-05-26: Enabled ridge methods for super learner model 
+* MAJOR UPDATES (MINOR UPDATES LISTED AT BOTTOM OF PROGRAM): 
+* 26-Jun-2018: v1.0 released   
 **********************************************************************************************************************/
 
 %LET suppresswarn = *; *set to * to turn off all warnings about the correct sas version for each proc, empty otherwise;
@@ -396,7 +385,7 @@ main work horse macros: _SuperLearner and _CVSuperLearner;
 
   * check methods/dist specification;
   %IF &dist^= AND &method= %THEN %DO;
-   %__SLwarning(%STR(no method specified, setting to default NNLS - this will be an error in the future));
+   %__SLwarning(%STR(No method specified, setting to default NNLS.));
    %LET method=NNLS;;
   %END;
   %IF NOT (&method IN(NNLOGLIK CCLOGLIK NNLS CCLS OLS LS NNLAE CCLAE LAE LOGLIK AUC ADAPTRF RIDGE CCRIDGE NNRIDGE 
@@ -408,7 +397,7 @@ main work horse macros: _SuperLearner and _CVSuperLearner;
   PROC FORMAT; VALUE SLrevf 1='0' 0='1';RUN; * by default models outcome = 0;
   %IF &runchecks=TRUE %THEN %DO;
     * startup message;
-    %IF NOT %SYMEXIST(SLShowOnce) %THEN %DO; 
+    %IF %SYMEXIST(SLShowOnce)=0 %THEN %DO; 
       %GLOBAL SLShowOnce;
       %__SLnote(%str(SuperLearner Macro: please report bugs to akeil@unc.edu));
       %LET SLShowOnce='shown';
@@ -432,8 +421,8 @@ main work horse macros: _SuperLearner and _CVSuperLearner;
     %END;
     %ELSE %IF &x^= %THEN %DO;
       %LET predictors = &X;
-      %__SLNote(%STR(Macro parameter X is specified. All variables with num levels > .25*N assumed continuous, otherwise nominal or binary));
-      PROC SQL NOPRINT; SELECT COUNT(&Y)/4 into :SLcutoff from &indata ;quit;
+      %__SLNote(%STR(Macro parameter X is specified. All variables with num levels > .05*N assumed continuous, otherwise nominal or binary));
+      PROC SQL NOPRINT; SELECT COUNT(&Y)/20 into :SLcutoff from &indata ;quit;
       %LET xidx=1;
       %DO %WHILE(%SCAN(&X, &xidx)^=);
           %__SLPNumlevels(&indata, %SCAN(&X, &xidx));
@@ -723,7 +712,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
     PROC SORT DATA = &outcvresults;
       BY order;
     RUN;
-    PROC PRINT DATA = &outcvresults(DROP=order);
+    PROC PRINT DATA = &outcvresults(DROP=order) NOOBS;
     RUN;
     %IF %__TrueCheck(&CLEANUP) %THEN %DO;
       PROC SQL NOPRINT; DROP TABLE __cvsltmp001__, __cvsltmp002__, __cvsltmp003__, __cvsltmp004__, __cvsltmp005__, __cvsltmp006__, __cvsltmp007__, __cvsltmp008__, __cvsltmp009__; QUIT;
@@ -1357,7 +1346,7 @@ RUN;
       %IF %STR(&indata) ^= %STR(&preddata) %THEN PUT "    Testing/validation data: &preddata";;
       PUT "                                                                                      ";
       PUT "  Super learner library: %SYSFUNC(COMPBL(&library))";  
-      %IF &droplib^= %THEN PUT "  Dropped library members (check SAS log): &droplib";;
+      %IF &droplib^=none %THEN PUT "  Dropped library members (check SAS log): &droplib";;
       PUT "  Assumed distribution: &dist                                                      ";
       PUT "  Method: &method                                            ";
       PUT "  Cross validation folds: &folds                                            ";
@@ -1374,14 +1363,16 @@ RUN;
         PUT "             indata=&indata, preddata=&preddata, outdata=&outdata, outresults=&outresults, ";
         PUT "             library=%str(&library), ";
         PUT "             folds=&folds, dist=&dist, method=&method, seed=&slseed,";
-        PUT "             trtstrat=&trtstrat, outresults=sl_summary, slridgepen=&slridgepen,"  ;   
+        PUT "             trtstrat=&trtstrat, slridgepen=&slridgepen,"  ;   
         PUT "             printres=TRUE, timer=TRUE, quietnotes=TRUE, quietwarning=TRUE)"  ;   
       %END;
       PUT "                                                                                      ";
-      PUT "Super learner coefficients, &folds.-fold cross validated risk/expected loss";
-      PUT "  ---------------------------------------------";
-      PUT "    Learner      Coefficient   CV risk";
-      PUT "  ---------------------------------------------";
+      %IF &BY= %THEN %DO; 
+        PUT "Super learner coefficients, &folds.-fold cross validated risk/expected loss";
+        PUT "  ---------------------------------------------";
+        PUT "    Learner      Coefficient   CV risk";
+        PUT "  ---------------------------------------------";
+      %END;
     END;
     PUT @5 learner @17 coefficient 8.5 @31 cvrisk 8.5 ;
     IF eof THEN DO;
@@ -1390,9 +1381,15 @@ RUN;
     END;
     RETURN;
     STOP;
-  RUN;
-  /*PROC PRINT DATA = &outresults NOOBS; */
-  RUN;
+  RUN;QUIT;RUN;
+  
+  %IF &BY^= %THEN %DO; 
+    PROC PRINT DATA =  &outresults NOOBS;
+     TITLE "Super learner coefficients, &folds.-fold cross validated risk/expected loss";
+     VAR &BY learner coefficient cvrisk;
+    RUN;
+  %END;
+
 %MEND __printsummary;
 /********************************************************;
 * Part 2: learner functions;
@@ -2310,12 +2307,12 @@ RUN;
     %IF (&continuous_predictors~=) %THEN 
           INPUT &continuous_predictors / LEVEL = INT;;
     HIDDEN 5;
-    TRAIN OUTMODEL = nnmod MAXITER=200;
+    TRAIN OUTMODEL = __nnmod MAXITER=200;
   PROC HPNEURAL DATA = &indata;
-    SCORE OUT=&outdata (DROP=_WARN_ RENAME=(p_&Y = p_nn&SUFF)) MODEL = nnmod;
+    SCORE OUT=&outdata (DROP=_WARN_ RENAME=(p_&Y = p_nn&SUFF)) MODEL = __nnmod;
     ID _ALL_;
   RUN;
-  PROC SQL NOPRINT; DROP TABLE nnmod; QUIT;
+  PROC SQL NOPRINT; DROP TABLE __nnmod; QUIT;
 %MEND nn_cn;
 
 %MACRO gam_in(
@@ -2331,7 +2328,7 @@ RUN;
     ODS SELECT NONE;
     %IF &WEIGHT^= %THEN FREQ &weight;; *weights possibly truncated to integer values;
       %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
-    MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors &SLIXterms) %IF (&continuous_predictors~=) %THEN %__GAMSPLINE(&continuous_predictors, 3); / 
+    MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors) %IF (&continuous_predictors~=) %THEN %__GAMSPLINE(&continuous_predictors, 3); / 
       DIST=BINOMIAL MAXITER=150 MAXITSCORE=300 ANODEV=NONE;
     OUTPUT OUT = &OUTDATA(RENAME=(P_&Y =  &_pvar) %IF (&continuous_predictors~=) %THEN %__gamdrop(&continuous_predictors);) PREDICTED;
   * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
@@ -2398,7 +2395,6 @@ RUN;
     MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors ) %IF (&continuous_predictors~=) %THEN %__GAMSPLINE(&continuous_predictors, 3); / 
      DIST=GAUSSIAN MAXITER=150 MAXITSCORE=300 ANODEV=NONE;
    OUTPUT OUT = &OUTDATA(RENAME=(P_&Y =  &_pvar) %IF (&continuous_predictors~=) %THEN %__gamdrop(&continuous_predictors);) PREDICTED;
-  RUN;
   %__CheckSLPredMissing(Y= &_pvar, indata=&OUTDATA);
   %IF (&SLPredMiss NE 0 AND &SLPredMiss NE .) %THEN %DO;
       * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
@@ -2431,8 +2427,7 @@ RUN;
     %IF &WEIGHT^= %THEN FREQ &weight;; *weights possibly truncated to integer values;
     MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors &SLIXterms) %IF (&continuous_predictors~=) %THEN %__GAMSPLINE(&continuous_predictors, 3); / 
      DIST=GAUSSIAN MAXITER=150 MAXITSCORE=300 ANODEV=NONE;
-   OUTPUT OUT = &OUTDATA(RENAME=(P_&Y =  &_pvar) %IF (&continuous_predictors~=) %THEN %__gamdrop(&continuous_predictors);) PREDICTED;
-  RUN;
+    OUTPUT OUT = &OUTDATA(RENAME=(P_&Y =  &_pvar) %IF (&continuous_predictors~=) %THEN %__gamdrop(&continuous_predictors);) PREDICTED;
   %__CheckSLPredMissing(Y= &_pvar, indata=&OUTDATA);
   %IF (&SLPredMiss NE 0 AND &SLPredMiss NE .) %THEN %DO;
       * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
@@ -2467,7 +2462,7 @@ RUN;
      DIST=BINOMIAL;
     ID _all_;
     OUTPUT OUT = &OUTDATA(RENAME=(PRED = &_pvar)) PREDICTED;
-  RUN;
+  PROC DATASETS LIBRARY=WORK;MODIFY &OUTDATA; FORMAT &Y; QUIT;
   %__CheckSLPredMissing(Y= &_pvar, indata=&OUTDATA);
   %IF (&SLPredMiss NE 0 AND &SLPredMiss NE .) %THEN %DO;
     * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
@@ -2494,15 +2489,14 @@ RUN;
   %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to LOGIT, but slower));;
   %LET _pvar = p_gamPLint&SUFF.;
   PROC GAMPL DATA = &indata PLIKEOPTIONS(TECH=QUANEW);
-  FORMAT &Y SLrevf.;
+    FORMAT &Y SLrevf.;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors); / 
-     DIST=BINOMIAL;
-   ID _all_;
-   OUTPUT OUT = &OUTDATA(RENAME=(PRED = &_pvar)) PREDICTED;
-  RUN;
+      DIST=BINOMIAL;
+    ID _all_;
+    OUTPUT OUT = &OUTDATA(RENAME=(PRED = &_pvar)) PREDICTED;
   PROC DATASETS LIBRARY=WORK;MODIFY &OUTDATA; FORMAT &Y; QUIT;
  %__CheckSLPredMissing(Y= &_pvar, indata=&OUTDATA);
   %IF (&SLPredMiss NE 0 AND &SLPredMiss NE .) %THEN %DO;
@@ -4421,7 +4415,6 @@ RUN;
 %MEND r_ridge_in; /*optional: include macro name in mend statement with [libraryname]_cn*/
 *%r_ridge_in(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
-
 %MACRO r_rpart_cn(
                 Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
@@ -4518,7 +4511,6 @@ RUN;
 %MEND r_rpartprune_in; /*optional: include macro name in mend statement with [libraryname]_cn*/
 *%r_rpartprune_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
-
 %MACRO r_rpartprune_cn(
                 Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
@@ -4567,8 +4559,6 @@ RUN;
   PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
 %MEND r_rpartprune_cn; /*optional: include macro name in mend statement with [libraryname]_cn*/
 *%r_rpartprune_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
-
-
 
 %MACRO r_sl_cn(
                 Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
@@ -4709,7 +4699,7 @@ RUN;
    a) combine training and testing data;
    b) expand input dataset to estimate counterfactual distributions
   */
-  %__SLnote(_intsetup);
+  %__SLnote(_pred_setup);
   %LOCAL i_i __intvar __int __fullints;
   %IF %__TrueCheck(&insample) %THEN %DO;
     DATA &outdata;
@@ -5092,12 +5082,12 @@ RUN;
     to facilitate proc optmodel statements
  */
 %__SLnote(__RENAMEADAPTcoefs);
- %LOCAL l_l ;
- %LET l_l = 1;
- %DO %WHILE(%SCAN(&library, &l_l)^=);
-    IF UPCASE(learner) = "__V&l_l" THEN learner = "__slcoef_%SCAN(&library, &l_l)&SUFF";
-  %LET l_l = %EVAL(1+&l_l);
- %END;
+  %LOCAL l_l ;
+  %LET l_l = 1;
+  %DO %WHILE(%SCAN(&library, &l_l)^=);
+     IF UPCASE(learner) = "__V&l_l" THEN learner = "__slcoef_%SCAN(&library, &l_l)&SUFF";
+   %LET l_l = %EVAL(1+&l_l);
+  %END;
 %MEND __RENAMEADAPTcoefs;
 
 %MACRO _get_coef(indata=, Y=, library=, outcoef=, outrisk=, suff=, weight=, method=CCLS, debug=FALSE, seed=) / MINOPERATOR MINDELIMITER=' ';
@@ -5120,9 +5110,9 @@ RUN;
   %LET libcount =  %_LIBCOUNT(library=&library);
   %IF %__TrueCheck(&verbose) %THEN %DO;  ODS SELECT ALL;%END;
   %IF (&method IN( NNLOGLIK CCLOGLIK LOGLIK NNLS CCLS OLS NNRIDGE CCRIDGE RIDGE NNLASSO CCLASSO LASSO NNLAE CCLAE LAE)) %THEN %DO;
-  *optimization using proc optmodel -good general purpose for obs < 500k;
+    *optimization using proc optmodel -good general purpose for obs < 500k;
     PROC OPTMODEL;
-      %IF %__TrueCheck(&verbose) %THEN TITLE "Optmodel SL coefficient estimation";;
+      %IF %__TrueCheck(&verbose) %THEN TITLE "OPTMODEL procedure: SL coefficient estimation";;
       SET OBS;
       SET LIB = 1..&LIBCOUNT;
       NUMBER __Y{OBS};
@@ -5218,22 +5208,24 @@ RUN;
     *end proc optmodel statements;
   %END;
   %IF (&method IN( BNNLOGLIK BCCLOGLIK BLOGLIK BNNLS BCCLS BOLS BNNRIDGE BCCRIDGE BRIDGE BNNLASSO BCCLASSO BLASSO BNNLAE BCCLAE BLAE)) %THEN %DO;
-    *super learner fitting with hpnlmod - capable handling more data than optmodel, but less robust in smaller problems;
+    *super learner fitting with hpnlmod - capable handling more data than optmodel, but less well tested;
+    * NOTE: these methods may become default in future versions;
     %LET wt =;
     %IF &weight^= %THEN %LET wt= &weight *;;
     ODS EXCLUDE ALL; ODS NORESULTS;
     PROC HPNLMOD DATA=__sltm004_  ABSGCONV=1E-16 
-     %IF (&method IN( BNNLOGLIK BCCLOGLIK BLOGLIK BNNLS BCCLS BOLS BNNRIDGE BCCRIDGE BRIDGE BNNLASSO BCCLASSO BLASSO BNNLAE BCCLAE BLAE )) %THEN TECH=QUANEW; 
-     %ELSE %IF (&method IN( BNNLOGLIK )) %THEN TECH=TRUREG;  
-     %ELSE /*TECH=LEVMAR*/;;
+      %IF %__TrueCheck(&verbose) %THEN TITLE "HPNLMOD procedure: SL coefficient estimation";;
+      %IF (&method IN( BNNLOGLIK BCCLOGLIK BLOGLIK BNNLS BCCLS BOLS BNNRIDGE BCCRIDGE BRIDGE BNNLASSO BCCLASSO BLASSO BNNLAE BCCLAE BLAE )) %THEN TECH=QUANEW; 
+      %ELSE %IF (&method IN( BNNLOGLIK )) %THEN TECH=TRUREG;  
+      %ELSE /*TECH=LEVMAR*/;;
       PARMS 
-         %LET l_l = 1; 
-          %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); __slcoef_&l_l =%SYSEVALF(1/&LIBCOUNT)  %LET l_l = %EVAL(&l_l +1); %END;;
+        %LET l_l = 1; 
+        %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); __slcoef_&l_l =%SYSEVALF(1/&LIBCOUNT)  %LET l_l = %EVAL(&l_l +1); %END;;
       %IF (&method IN(BCCLS BCCLOGLIK BCCRIDGE BCCLAE BCCLASSO)) %THEN %DO;
         * convexity part 1;
         BOUNDS 0 <= __slcoef_1-__slcoef_%EVAL(&l_l -1) <= 1;
-       %END;
-       %IF (&method IN(BNNLOGLIK BCCLOGLIK BLOGLIK)) %THEN %DO;
+      %END;
+      % IF (&method IN(BNNLOGLIK BCCLOGLIK BLOGLIK)) %THEN %DO;
          *loglik methods;
         %LET l_l = 1;
         __slp = 1/(1+EXP(-( 0
@@ -5242,16 +5234,16 @@ RUN;
          r =  (&y*LOG(MIN(MAX(__slp, &TRIMBOUND), 1-&TRIMBOUND)) + (1-&y)*LOG(MIN(MAX(1-__slp, &TRIMBOUND), 1-&TRIMBOUND)));
          dummy=0;
         MODEL dummy ~ GENERAL(&WT r);
-       %END;
-       %IF (&method IN(BNNLS BCCLS BOLS)) %THEN %DO;
-         * ls methods;
+      %END;
+      %IF (&method IN(BNNLS BCCLS BOLS)) %THEN %DO;
+        * ls methods;
         %LET l_l = 1;
         f =  &WT ( 0
           %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); + __slcoef_&l_l * __v&l_l  %LET l_l = %EVAL(&l_l +1); %END;
           );
         MODEL &y ~ NORMAL( f, sig2);
-       %END;
-       %IF (&method IN(BNNRIDGE BCCRIDGE BRIDGE)) %THEN %DO;
+      %END;
+      %IF (&method IN(BNNRIDGE BCCRIDGE BRIDGE)) %THEN %DO;
          * ridge methods, penalization by offset;
         %LET l_l = 1;
         f = (Y-( 0
@@ -5264,8 +5256,8 @@ RUN;
           );
          dummy=0;
         MODEL dummy ~ GENERAL(-&WT f - pen);
-       %END;
-       %IF (&method IN(BNNLASSO BCCLASSO BLASSO)) %THEN %DO;
+      %END;
+      %IF (&method IN(BNNLASSO BCCLASSO BLASSO)) %THEN %DO;
          * LASSO methods, penalization by offset;
         %LET l_l = 1;
         f = (Y-( 0
@@ -5278,8 +5270,8 @@ RUN;
           );
          dummy=0;
         MODEL dummy ~ GENERAL(-&WT f - pen);
-       %END;
-       %IF (&method IN(BNNLAE BCCLAE BLAE)) %THEN %DO;
+      %END;
+      % IF (&method IN(BNNLAE BCCLAE BLAE)) %THEN %DO;
          *least absolute error methods;
         %LET l_l = 1;
         f =  ABS(&y-( 0
@@ -5288,36 +5280,36 @@ RUN;
           ;
          dummy=0;
         MODEL dummy ~ GENERAL(-&WT f);
-       %END;
-       %IF (&method IN(BCCLS BCCLOGLIK BCCLAE BCCRIDGE BCCLASSO)) %THEN %DO;
+      %END;
+      %IF (&method IN(BCCLS BCCLOGLIK BCCLAE BCCRIDGE BCCLASSO)) %THEN %DO;
         * convexity part 2;
         %LET l_l = 1;
         RESTRICT  0  
           %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); + __slcoef_&l_l  %LET l_l = %EVAL(&l_l +1); %END;
           = 1.0;
-       %END;
-       %IF (&method IN(BNNLS BNNLOGLIK BNNRIDGE BNNLAE BNNLASSO)) %THEN %DO; 
-         *non-negativity;
+      %END;
+      %IF (&method IN(BNNLS BNNLOGLIK BNNRIDGE BNNLAE BNNLASSO)) %THEN %DO; 
+        *non-negativity;
         %LET l_l = 1;
-         %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); BOUNDS 0<= __slcoef_&l_l <=10;  %LET l_l = %EVAL(&l_l +1); %END; 
-       %END;
+        %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); BOUNDS 0<= __slcoef_&l_l <=10;  %LET l_l = %EVAL(&l_l +1); %END; 
+      %END;
       ODS OUTPUT ParameterEstimates=&outcoef(KEEP=parameter estimate RENAME=(estimate=Coef) WHERE=(parameter ^= "sig2"));
     RUN;  
     %IF (&method IN(BNNLS BNNLOGLIK BNNRIDGE BNNLAE BNNLASSO)) %THEN %DO;
-    *renormalize coefficients for nn methods;
-    PROC MEANS DATA = &OUTCOEF NOPRINT;
-      VAR Coef;
-      OUTPUT OUT=__slt0017_ SUM=/;
-    %LOCAL _coefmean;
-    DATA _NULL_;
-      SET __slt0017_;
-      CALL SYMPUT('_coefSUM', PUT(coef, 18.16));
-    RUN;
-    %IF %SYSEVALF(&_coefsum<.01) %THEN %__SLWarning(%STR(&method appears to be not working well for the current problem. Try BCCLS, BCCRIDGE, BCCLASSO, OR BCCLOGLIK (bernoulli only).));
-    DATA &outcoef;
-      SET &outcoef;
-      Coef = Coef/&_coefsum;
-    RUN;
+      *renormalize coefficients for nn methods;
+      PROC MEANS DATA = &OUTCOEF NOPRINT;
+        VAR Coef;
+        OUTPUT OUT=__slt0017_ SUM=/;
+      %LOCAL _coefmean;
+      DATA _NULL_;
+        SET __slt0017_;
+        CALL SYMPUT('_coefSUM', PUT(coef, 18.16));
+      RUN;
+      %IF %SYSEVALF(&_coefsum<.01) %THEN %__SLWarning(%STR(&method appears to be not working well for the current problem. Try BCCLS, BCCRIDGE, BCCLASSO, OR BCCLOGLIK (bernoulli only).));
+      DATA &outcoef;
+        SET &outcoef;
+        Coef = Coef/&_coefsum;
+      RUN;
     %END;
     *coefs to 1 obs;
     PROC TRANSPOSE DATA = &outcoef OUT=&outcoef(DROP=_NAME_); ID parameter;RUN;
@@ -5375,15 +5367,14 @@ RUN;
 %MACRO _get_adaptive_coef(indata=, outdata=, Y=, library=, outcoef=, outrisk=, suff=, weight=, method=CCLS, debug=FALSE) / MINOPERATOR MINDELIMITER=' ';
   FILENAME adapt TEMP;
   /* RANDOM FOREST TO GET SUPER LEARNER FIT*/
- DATA __sltm004_;
-  * training data; 
-  SET &inDATa (WHERE =(__int=.o AND &Y > .z AND __train=1));
-  %__RENAMEVARS(Y=&Y, library=&library,suff=_z);
-
- DATA __sltm005_; 
-  * test data;
-  SET &inDATa ;
-  %__RENAMEVARS(Y=, library=&library,suff=_full);
+  DATA __sltm004_;
+    * training data; 
+    SET &inDATa (WHERE =(__int=.o AND &Y > .z AND __train=1));
+    %__RENAMEVARS(Y=&Y, library=&library,suff=_z);
+  DATA __sltm005_; 
+    * test data;
+    SET &inDATa ;
+    %__RENAMEVARS(Y=, library=&library,suff=_full);
   %IF &method = ADAPTRF %THEN %DO;
     PROC HPFOREST DATA = __sltm004_ seed=&SLseed  /*PRESELECT=BINNEDSEARCH SCOREPROLE=OOB MAXTREES = 100*/ ;
       ODS SELECT NONE;
@@ -5422,22 +5413,22 @@ RUN;
     OUTPUT OUT = &outrisk(KEEP=j CVrisk) MEAN=;
   RUN;
   DATA &outcoef(KEEP= J Learner col1);
-   LENGTH Learner $39;
-   SET &outcoef;
-     %LET l_l = 1;
-     %DO %WHILE(%SCAN(&LIBRARY, &l_l)^=);
-       %LET book = %SCAN(&LIBRARY, &l_l);
-       IF TRIM(variable) = "__v&l_l" THEN DO;
-         Learner = "__slcoef_&book";
-         j = &l_l;
-         %IF &DIST=BERNOULLI %THEN col1 = MarginOOB;;      
-         %IF &DIST=GAUSSIAN %THEN col1 = MSEOOB;;      
-         OUTPUT;
-       END;
-       %LET l_l = %EVAL(&l_l + 1);
-     %END; *scan l_l;
-   RUN;
-   PROC SORT DATA = &OUTCOEF; BY j; RUN;
+    LENGTH Learner $39;
+    SET &outcoef;
+      %LET l_l = 1;
+      %DO %WHILE(%SCAN(&LIBRARY, &l_l)^=);
+        %LET book = %SCAN(&LIBRARY, &l_l);
+        IF TRIM(variable) = "__v&l_l" THEN DO;
+          Learner = "__slcoef_&book";
+          j = &l_l;
+          %IF &DIST=BERNOULLI %THEN col1 = MarginOOB;;      
+          %IF &DIST=GAUSSIAN %THEN col1 = MSEOOB;;      
+          OUTPUT;
+        END;
+        %LET l_l = %EVAL(&l_l + 1);
+      %END; *scan l_l;
+  RUN;
+  PROC SORT DATA = &OUTCOEF; BY j; RUN;
   PROC TRANSPOSE DATA = &outcoef(DROP=j) OUT=&outcoef; ID learner;RUN;
 %MEND _get_adaptive_coef;
 
@@ -5447,17 +5438,17 @@ RUN;
   */
   %__SLnote(_sl_cvrisk: calculate cross validated risk for each algorithm and minimize cross validate risk to estimate coefficients);
   DATA &indata;
-   SET &indata;
-   %LET k_k=0;
-   %DO %WHILE (&k_k < &folds);
-    %LET k_k = %EVAL(&k_k + 1);
-     %LET l_l = 1;
-     %DO %WHILE(%SCAN(&LIBRARY, &l_l)^=);
-      %LET book = %SCAN(&LIBRARY, &l_l);
-      p_&book._z = SUM(p_&book._z, (1-__cv&k_k)*p_&book&k_k); * compiling learner specific cross validated predictions;
-      DROP p_&book&k_k ;
-      %LET l_l = %EVAL(&l_l + 1);
-     %END; *scan l;
+    SET &indata;
+    %LET k_k=0;
+    %DO %WHILE (&k_k < &folds);
+      %LET k_k = %EVAL(&k_k + 1);
+      %LET l_l = 1;
+      %DO %WHILE(%SCAN(&LIBRARY, &l_l)^=);
+        %LET book = %SCAN(&LIBRARY, &l_l);
+        p_&book._z = SUM(p_&book._z, (1-__cv&k_k)*p_&book&k_k); * compiling learner specific cross validated predictions;
+        DROP p_&book&k_k ;
+        %LET l_l = %EVAL(&l_l + 1);
+      %END; *scan l;
       DROP &y.__CV__&k_k;
     %END; *k_k;
   RUN;
@@ -5478,7 +5469,6 @@ RUN;
     %_get_coef(indata=&indata, Y=&Y, library=&library, outcoef=&outcoef, outrisk=&outcvrisks, weight=&weight, suff=, method=&method, debug=false,seed=&seed);;
   %IF (&method IN(ADAPTRF)) %THEN
     %_get_adaptive_coef(indata=&indata, outdata=&outdata, Y=&Y, library=&library, outcoef=&outcoef, outrisk=&outcvrisks, weight=&weight, suff=, method=&method, debug=FALSE);;
-
 %MEND _sl_cvrisk;
 *%_sl_cvrisk(indata=__sltm002_, outdata=__sltm002_, library=&library, incoef=sl_coef, risk=&risk); *get (cross-validated) risk predictions for each fold;;
 
@@ -5488,16 +5478,14 @@ RUN;
   */
   %__SLnote(_SLPredict: get final superlearner predictions);
   PROC SQL NOPRINT; CREATE TABLE &outdata AS SELECT * FROM &indata ORDER BY __seqid__;
-  
   DATA __sltm0017_;
-   SET &inrisk END = eof;
-   RETAIN minrisk 1e16 idx 1;
-   IF minrisk > riskl THEN DO; minrisk = riskl; idx = _n_;END;
-   IF eof THEN OUTPUT;
+    SET &inrisk END = eof;
+    RETAIN minrisk 1e16 idx 1;
+    IF minrisk > riskl THEN DO; minrisk = riskl; idx = _n_;END;
+    IF eof THEN OUTPUT;
   DATA _NULL_;
-   SET __sltm0017_;
-   CALL SYMPUT("SL_dslidx", PUT(idx, 3.0));
-
+    SET __sltm0017_;
+    CALL SYMPUT("SL_dslidx", PUT(idx, 3.0));
   DATA &outdata;
     SET &outdata;
     IF _N_ = 1 THEN SET &incoef;
@@ -5542,41 +5530,41 @@ RUN;
   DATA __sltm003_(KEEP=risk: );
     SET &indata(WHERE=(__int=.o)) END = __eof;
     %IF (&method IN (NNLAE CCLAE LAE BNNLAE BCCLAE BLAE)) %THEN %DO;
-     %LET l_l = 1;
-     %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
-      %LET book = %SCAN(&LIBRARY, &l_l);
-      RETAIN risk_&book 0 ;
-      risk_&book = risk_&book + (ABS(&Y - p_&book._z))/&SLSampSize ;
-      %LET l_l = %EVAL(&l_l + 1);
-     %END;
+      %LET l_l = 1;
+      %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
+        %LET book = %SCAN(&LIBRARY, &l_l);
+        RETAIN risk_&book 0 ;
+        risk_&book = risk_&book + (ABS(&Y - p_&book._z))/&SLSampSize ;
+        %LET l_l = %EVAL(&l_l + 1);
+      %END;
     %END;
     %IF (&method IN (NNLS CCLS OLS ADAPTRF RIDGE CCRIDGE NNRIDGE BNNLS BCCLS BOLS BRIDGE BCCRIDGE BNNRIDGE BLASSO BCCLASSO BNNLASSO)) %THEN %DO;
-     %LET l_l = 1;
-     %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
-      %LET book = %SCAN(&LIBRARY, &l_l);
-      RETAIN risk_&book 0 ;
-      risk_&book = risk_&book + ((&Y - p_&book._z)**2)/&SLSampSize ;
-      %LET l_l = %EVAL(&l_l + 1);
-     %END;
+      %LET l_l = 1;
+      %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
+        %LET book = %SCAN(&LIBRARY, &l_l);
+        RETAIN risk_&book 0 ;
+        risk_&book = risk_&book + ((&Y - p_&book._z)**2)/&SLSampSize ;
+        %LET l_l = %EVAL(&l_l + 1);
+      %END;
     %END;
     %IF (&method IN(NNLOGLIK CCLOGLIK LOGLIK BNNLOGLIK BCCLOGLIK BLOGLIK)) %THEN %DO;
-     %LET l_l = 1;
-     %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
-      %LET book = %SCAN(&LIBRARY, &l_l);
-      RETAIN risk_&book 0;
-      risk_&book = risk_&book + (&Y*LOG(MAX(MIN(p_&book._z, 1-&TRIMBOUND), &TRIMBOUND)) + (1-&Y)*LOG(1-MAX(MIN(p_&book._z, 1-&TRIMBOUND), &TRIMBOUND)))/&SLSampSize ;
-      %LET l_l = %EVAL(&l_l + 1);
-     %END;
+      %LET l_l = 1;
+      %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
+        %LET book = %SCAN(&LIBRARY, &l_l);
+        RETAIN risk_&book 0;
+        risk_&book = risk_&book + (&Y*LOG(MAX(MIN(p_&book._z, 1-&TRIMBOUND), &TRIMBOUND)) + (1-&Y)*LOG(1-MAX(MIN(p_&book._z, 1-&TRIMBOUND), &TRIMBOUND)))/&SLSampSize ;
+        %LET l_l = %EVAL(&l_l + 1);
+      %END;
     %END;
     IF __eof THEN OUTPUT;
   DATA _NULL_; 
     SET __sltm003_;
-     %LET l_l = 1;
-     %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
-      %LET book = %SCAN(&LIBRARY, &l_l);
-       CALL SYMPUT ("r&l_l", PUT(risk_&book, BEST9.));
-      %LET l_l = %EVAL(&l_l + 1);
-     %END;
+      %LET l_l = 1;
+      %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
+        %LET book = %SCAN(&LIBRARY, &l_l);
+        CALL SYMPUT ("r&l_l", PUT(risk_&book, BEST9.));
+        %LET l_l = %EVAL(&l_l + 1);
+      %END;
   RUN;
   %__SLnote(Cross validated Super Learner risk: (unavailable without further cross-validation)); 
   %LET l_l = 1;
@@ -5931,33 +5919,5 @@ OPTIONS NOMPRINT;
 *%test_cvsl(n=300);
 /**********************************************************************************************************************
 * MINOR UPDATES
-  2017-06-13: Changed lasso model for binary data to be logistic-lasso via proc HPGENSELECT
-  2017-10-18: Miscellaneous bug fixes
-  2017-10-25: Added error message for inappropriate error function
-  2017-10-27: Changed some intermediate macro names to reflect functions
-  2017-11-01: Fixed coefficient usage for "entropy" risk function 
-  2018-02-02: Cleaned up the automated distribution picker, fixed bug that caused exclusion of nominal predictors
-  2018-02-15: Removed case-sensitivity of risk parameter
-  2018-02-22: Added stepwise and older lasso routine for compatibility with older sas (fixed)
-  2018-03-14: Bug fix
-  2018-03-20: cleaning up temp datasets
-  2018-03-22: version 0.4.4 added 'cart' learner with no cross validation (changed previous cart to "cvcart"), added
-    super basic error checking: %__commonerrors();
-  2018-03-28: Added "method" parameter for getting coefficients
-  2018-03-29: change default parameterization/determination of loss function (with backwards compatibility and deprecation note), v 0.6.0
-  2018-03-29: simplify get_coef, 0.6.1.
-  2018-03-29: added mars learner, version bump to 0.7.0
-  2018-04-01: added missing data check
-  2018-04-02: added more learners from R
-  2018-04-05: added library validation, boosting and bagging (sas native)
-  2018-04-08: speed bump by removing unnecessary optmodel steps
-  2018-04-10: changed how interventions are specified with gfstrat, added adaptive SL, bugs
-  2018-04-25: allowed simpler call with Y,X instead of prevar and multiple predictors, added learners ridge, r_svm
-  2018-05-06: implemented shell for using observation weights (not yet implemented)
-  2018-05-11: implemented discrete super learner
-  2018-05-14: fully implemented weights for all sas procedures
-  2018-05-18: fully implemented weights for all R procedures
-  2018-05-20: added r learners: lasso, enet, ridge (from glmnet)
-  2018-05-31: improved macro variable scoping
-  2018-06-03: added new level-1 model options
+* none yet
 **********************************************************************************************************************/
