@@ -1,8 +1,8 @@
-%PUT super learner macro v1.0.2;
+%PUT super learner macro v1.0.3;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version: 1.0.2
+* Version: 1.0.3
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS (tested on sas 9.4 TS1M3)
@@ -2187,7 +2187,7 @@ RUN;
   RUN;
 %MEND lassocv_cn;
 
-%MACRO lassointcv_cn(
+%MACRO lassocvint_cn(
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
@@ -2199,9 +2199,9 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms/ 
     SELECTION=LASSO(CHOOSE=CVEX STOP=NONE);
-    OUTPUT OUT =&outdata(DROP=_CVINDEX:) PRED=p_lassointcv&SUFF;
+    OUTPUT OUT =&outdata(DROP=_CVINDEX:) PRED=p_lassocvint&SUFF;
   RUN;
-%MEND lassointcv_cn;
+%MEND lassocvint_cn;
 
 %MACRO lassocv_in(
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
@@ -2212,14 +2212,14 @@ RUN;
                nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight, suff=&suff, seed=&seed);
 %MEND lassocv_in;
 
-%MACRO lassointcv_in(
+%MACRO lassocvint_in(
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* LASSO model, selection by cross validation (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */  
-  %lassointcv_cn(Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,
+  %lassocvint_cn(Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,
                nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight ,suff=&suff, seed=&seed);
-%MEND lassointcv_in;
+%MEND lassocvint_in;
 
 %MACRO lar_in(
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
