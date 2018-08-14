@@ -1,8 +1,8 @@
-%PUT super learner macro v1.0;
+%PUT super learner macro v1.0.2;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version: 1.0
+* Version: 1.0.2
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS (tested on sas 9.4 TS1M3)
@@ -63,6 +63,7 @@ This programs structure is:
                      ordinal_predictors=,
                      nominal_predictors=,
                      continuous_predictors=,
+                     id=,
                      weight=, 
                      indata=, 
                      preddata=, 
@@ -88,6 +89,7 @@ This programs structure is:
   ordinal_predictors=,    * ordinal variables, (including ordinal intervention variables) 
   nominal_predictors=,    * nominal variables, (including nominal intervention variables) 
   continuous_predictors=, * continuous variables, (including continuous intervention variables) 
+  id=,                    * name of variable of a unique identifier for units (optional)
   weight=,                * variable name for observation weights/importance weights/frequency weights 
   indata=,                * training data (sample data)
   preddata=,              * (optional) data in which you wish to make predictions (if blank, will make predictions in 'indata')
@@ -218,6 +220,7 @@ SuperLearner:
                      ordinal_predictors= &ordinal_predictors ,
                      nominal_predictors= &nominal_predictors ,
                      continuous_predictors= &continuous_predictors,
+                     id = &id, 
                      weight=&weight, /* observation weights/importance weights/frequency weights */
                      indata= &indata , 
                      preddata= &preddata , 
@@ -266,6 +269,7 @@ SuperLearner:
                      ordinal_predictors=  ,
                      nominal_predictors=  ,
                      continuous_predictors=  ,
+                     id=,
                      weight=, /* observation weights/importance weights/frequency weights */
                      indata=  , 
                      dist= GAUSSIAN,
@@ -285,6 +289,7 @@ CVSuperLearner:
                      ordinal_predictors= &ordinal_predictors ,
                      nominal_predictors= &nominal_predictors ,
                      continuous_predictors= &continuous_predictors ,
+                     id=&id,
                      weight=&weight, /* observation weights/importance weights/frequency weights */
                      indata= &indata , 
                      dist=&dist ,
@@ -327,6 +332,7 @@ main work horse macros: _SuperLearner and _CVSuperLearner;
                      ordinal_predictors=,
                      nominal_predictors=,
                      continuous_predictors=,
+                     id=,
                      weight=, /* observation weights/importance weights/frequency weights */
                      indata=, 
                      preddata=, 
@@ -480,7 +486,7 @@ main work horse macros: _SuperLearner and _CVSuperLearner;
 /*
 _main: the absolute barebones super learner macro (not to be called on its own)
 */
-  %MACRO _main(indata, y, folds, insample, preddata, library, risk, method, dist, outdata, outslcoefs, outslrisks);
+  %MACRO _main(indata, y, id, folds, insample, preddata, library, risk, method, dist, outdata, outslcoefs, outslrisks);
     * the bulk of the superlearner functions go in here;
     %GLOBAL SLSampSize;
     PROC SQL NOPRINT; SELECT COUNT(&Y) into :SLSampSize from &indata  ;quit;
@@ -491,12 +497,12 @@ _main: the absolute barebones super learner macro (not to be called on its own)
     %__SLnote(Using cross validation with &folds fold);
     %__SLnote(Approximately %EVAL(&SLSampSize/&folds) per fold);
     *prepare data for cross validation (split by training/validation sets);
-    %_cvsetup(Y=&Y, indata=&indata, outdata=__sltm0013_, folds=&folds);
+    %_cvsetup(Y=&Y, id=&id, indata=&indata, outdata=__sltm0013_, folds=&folds);
     * set up data for possible interventions (1 or 0 only);
     %_pred_setup(Y=&Y, intvars=&intvars, indata=__sltm0013_, outdata=__sltm001_, preddata=&preddata, insample=&insample); 
     * get cross validated predictions from each learner;
     OPTIONS NOQUOTELENMAX;
-    %_getcvpreds&dist(Y=&Y, indata=__sltm001_, outdata=__sltm002_, library=&library, weight=&weight, folds=&folds, seed=&slseed);;
+    %_getcvpreds&dist(Y=&Y, indata=__sltm001_, outdata=__sltm002_, library=&library, weight=&weight, id=&id, folds=&folds, seed=&slseed);;
     *get (cross-validated) risk estimates for each fold and superlearner coefficients for overall fit;
     %_sl_cvrisk(indata=__sltm002_, outdata=__sltm002_, library=&library, outcoef=&outslcoefs, risk=&risk, method=&method, outcvrisks=&outslrisks, seed=&slseed); 
     OPTIONS QUOTELENMAX;
@@ -532,7 +538,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
       *run super learner;
       %PUT By processing &byj of %trim(&bylevs);
       /**/
-      %_main(__sltm0000, &Y, &folds, &insample, __sltm1000, &library, &risk, &method, &dist, __sltm0100, __sltm0101, __sltm0102);
+      %_main(__sltm0000, &Y, &id, &folds, &insample, __sltm1000, &library, &risk, &method, &dist, __sltm0100, __sltm0101, __sltm0102);
       /**/
       DATA __sltm0101; SET __sltm0101; &by=&currbyval;
       DATA __sltm0102; SET __sltm0102; &by=&currbyval;
@@ -548,7 +554,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
   %END;
   %IF &by = %THEN %DO;
     /**/
-    %_main(&indata, &Y, &folds, &insample, &preddata, &library, &risk, &method, &dist, &outdata, &outslcoefs, &outslrisks);
+    %_main(&indata, &Y, &id, &folds, &insample, &preddata, &library, &risk, &method, &dist, &outdata, &outslcoefs, &outslrisks);
     /**/
   %END;
   PROC SORT DATA = &outdata; BY &BY __seqid__ __cvid__ __int; RUN;
@@ -587,6 +593,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
                        ordinal_predictors=  ,
                        nominal_predictors=  ,
                        continuous_predictors= ,
+                       id=,
                        weight= , 
                        indata= , 
                        dist= ,
@@ -653,6 +660,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
                      ordinal_predictors= &ordinal_predictors ,
                      nominal_predictors= &nominal_predictors ,
                      continuous_predictors= &continuous_predictors ,
+                     id=&id,
                      weight= &weight, 
                      indata=  __cvsltmp002__ , 
                      preddata=__cvsltmp003__, 
@@ -1292,6 +1300,141 @@ RUN;
   %END;
 %MEND __IDENT;
 
+%MACRO __RENAMEDESIGN(VARS);
+  /* give library specific predictions standard variable names
+     to facilitate proc optmodel statements
+  */
+  %GLOBAL __slhalvars;
+  %LET __slhalvars = ;
+  %__SLnote(__RENAMEDESIGN);
+  %LOCAL l_l ;
+  %LET l_l = 1;
+  RENAME 
+  %DO %WHILE(%SCAN(&vars, &l_l)^=);
+    %LET __slhalvars = &__slhalvars __v&l_l;
+    %SCAN(&vars, &l_l) =  __v&l_l
+    %LET l_l = %EVAL(1+&l_l);
+  %END;;
+%MEND __RENAMEDESIGN;
+
+%MACRO GetHALDesign(y, vars, indata, outdata, drop=TRUE);
+  /*
+   steps to create design matrix for HAL (highly adaptive lasso):
+    0. preprocessing
+    1. create indicator variables for I[i,j,m] = I(X[i,m] <= X[j,m]) for i = 1..N, j=1..N, m=1..P
+    2. create all possible interactions of those indicators: e.g. I[i,j,m+1] = I[i,j,1]*I[i,j,2]
+    3. remove duplicate columns from the design matrix
+   *REQUIRED: training data should have non-missing Y, testing/validation data should have missing Y
+    - this is satisfied by super learner macro defaults
+  */
+  /*
+  to do:
+   1. Make more robust to variable naming (e.g. rename variables to v1,v2,v3, etc. in prelim step)
+  */
+  %LOCAL haln halnt __hidx __halterms __nhalterms __halmains __nhalmains __HALBAR;
+  /*
+    0. preprocessing
+  */
+  DATA __sltm0017_;
+    SET &indata;
+    %__RENAMEDESIGN(&vars);
+  PROC SQL NOPRINT; SELECT COUNT(%SCAN(&__slhalvars, 1)) INTO :haln FROM __sltm0017_; QUIT;
+  PROC SQL NOPRINT; SELECT COUNT(%SCAN(&__slhalvars, 1)) INTO :halnT FROM __sltm0017_(WHERE=(&Y>.z)); QUIT;
+  %LET __hidx = 1;
+  %LET __halbar = %SCAN(&__slhalvars, &__hidx) ;
+  %DO %WHILE(%SCAN(&__slhalvars, &__hidx+1)^=);
+    %LET __hidx = &__hidx+1;
+    %LET __halbar = &__halbar | %SCAN(&__slhalvars, &__hidx);
+  %END; 
+  DATA fake;
+    SET __sltm0017_ (OBS=1);
+	WHERE &y>.z;
+  * leverage glmmod for creating all possible interaction terms;
+  PROC GLMMOD DATA=fake OUTPARM=__halterms  NOPRINT;
+    MODEL &Y = &__halbar / NOINT ;
+  PROC GLMMOD DATA=fake OUTPARM=__halmains NOPRINT;
+    MODEL &Y = &__slhalvars / NOINT ;
+  PROC SQL NOPRINT;
+    SELECT EFFNAME INTO :__halterms SEPARATED BY " " 
+      FROM __halterms;
+    SELECT EFFNAME INTO :__halmains SEPARATED BY " " 
+      FROM __halmains;
+	DROP TABLE fake;
+  QUIT;
+  DATA __halterms;
+   SET __halterms END=EOF;
+   IF eof THEN CALL SYMPUT("__nhalterms", PUT(_COLNUM_, 9.0));
+  RUN;
+  DATA __halmains;
+   SET __halmains END=EOF;
+   IF eof THEN CALL SYMPUT("__nhalmains", PUT(_COLNUM_, 9.0));
+  RUN;  
+  /*
+    1. create indicator variables for I[i,j,m] = I(X[i,m] <= X[j,m]) for i = 1..N, j=1..N, m=1..P
+  */
+  DATA __halmat;
+	*this step should be done only in the training data!;
+    SET __sltm0017_;
+    WHERE &y > .z; 
+    %LET __hidx = 1;
+    %DO %WHILE(%SCAN(&__slhalvars, &__hidx, ' ')^=);
+      %LET __x = %SCAN(&__halmains, &__hidx, ' ');
+      ARRAY _&__x._[&halnt] ;
+      %LET __hidx = %EVAL(&__hidx+1);
+	  RETAIN _&__x._:;
+	  KEEP _&__x._:;
+    %END;
+	*outer loop over variables, inner loop over sample;
+    %LET __hidx = 1;
+    %DO %WHILE(%SCAN(&__slhalvars, &__hidx, ' ')^=);
+      DO i = 1 TO &halnt;
+        IF i = _N_ THEN _%SCAN(&__slhalvars, &__hidx, ' ')_[i] = %SCAN(&__slhalvars, &__hidx, ' ');
+      END;
+      %LET __hidx = %EVAL(&__hidx+1);
+    %END;
+    IF _n_ = &halnt THEN OUTPUT;  
+  RUN;
+  /*
+      2. create all possible interactions of those indicators: e.g. I[i,j,m+1] = I[i,j,1]*I[i,j,2]
+  */
+  DATA __designdup(KEEP = __fakey __hi:) __designraw(DROP =  __fakey __hi:);
+    __fakey = 1;
+    ARRAY __Hi[&__nhalterms, &halnt] ;
+    SET __sltm0017_;
+    IF _n_=1 THEN SET __halmat;
+    %LET __hidx = 1;
+    %DO %WHILE(%SCAN(&__slhalvars, &__hidx, ' ')^=);
+      %LET __x = %SCAN(&__halmains, &__hidx, ' ');
+      ARRAY _&__x._[&halnt] ;
+      %LET __hidx = %EVAL(&__hidx+1);
+    %END;
+    %LET __hidx = 1;
+	DO n = 1 TO &halnt;
+      %DO %WHILE(%EVAL(&__hidx <= &__nhalterms));
+        %LET __xi = %TRIM(%SCAN(&__halterms, &__hidx, ' '));
+	      %LET __aidx = 1;
+		  %LET term = 1;
+          %DO %WHILE(%SCAN(&__xi, &__aidx, '*')^=);
+            %LET term = &term * (%SCAN(&__xi, &__aidx, '*') >= _%SCAN(&__xi, &__aidx, '*')_[n]);
+            %LET __Aidx = %EVAL(&__aidx+1);
+		  %END;
+		  __Hi[&__hidx, n] = &term;
+        %LET __hidx = %EVAL(&__hidx+1);
+      %END; 
+	END;
+  RUN;
+  /*
+  3. remove duplicate columns from the design matrix;
+  */
+  PROC TRANSPOSE DATA = __designdup OUT=__designdup(DROP=_NAME_); 
+  PROC SQL NOPRINT;
+    CREATE TABLE &outdata AS SELECT DISTINCT * FROM __designdup;
+    %IF &DROP=TRUE %THEN DROP TABLE __designdup, __halmat, __designraw, __halmains, __halterms, __sltm0017_;;
+  QUIT;
+  PROC TRANSPOSE DATA = &outdata OUT=&outdata(DROP=_NAME_) PREFIX=__hal_;
+  RUN; QUIT; RUN;
+%MEND GetHALDesign;
+
 %MACRO __noprintsummary(Y=, predictors= , library=, folds=, 
                          method=, dist=, shuffle=, preddata=, indata=, outcoef=,outcvrisk=,outresults=,n=);
    *put some results and call summary in readable format;
@@ -1431,8 +1574,8 @@ RUN;
 ********************************************************/
 
 %MACRO bayesnet_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Parent child Bayesian network with bivariate association based prescreening and subsequent variable selection
      max parents= 5 as of SAS HPEM 14.1 */
@@ -1451,8 +1594,8 @@ RUN;
 %MEND bayesnet_in;
 
 %MACRO nbayes_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Naive Bayes classification */
   
@@ -1470,8 +1613,8 @@ RUN;
 %MEND nbayes_in;
 
 %MACRO rf_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* RANDOM FOREST */
   &suppresswarn %__SLwarning(%str(This routine requires AT LEAST SAS 9.4 TS1M3 with high powered data mining procedures enabled));
@@ -1490,8 +1633,8 @@ RUN;
 %MEND rf_in;
 
 %MACRO rf_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* RANDOM FOREST, continuous */
   
@@ -1511,8 +1654,8 @@ RUN;
 %MEND rf_cn;
 
 %MACRO rfoob_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* RANDOM FOREST, using out of bag estimates as predictions*/
   
@@ -1532,8 +1675,8 @@ RUN;
 %MEND rfoob_in;
 
 %MACRO rfoob_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* RANDOM FOREST, continuous, using out of bag estimates as predictions */
   
@@ -1553,8 +1696,8 @@ RUN;
 %MEND rfoob_cn;
 
 %MACRO logit_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* logistic model */
   PROC LOGISTIC DATA = &indata NOPRINT DESCENDING;
@@ -1568,8 +1711,8 @@ RUN;
 *%logit_in( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO logitint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* logistic model with interaction terms*/
   PROC LOGISTIC DATA = &indata NOPRINT DESCENDING;
@@ -1583,8 +1726,8 @@ RUN;
 *%logit_in( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO glm_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
  /*wrapper for logit*/
  %logit_in(Y=&y, indata=&indata,  outdata=&outdata,  binary_predictors= &binary_predictors,  ordinal_predictors=&ordinal_predictors,  nominal_predictors=&nominal_predictors,   continuous_predictors=&continuous_predictors,weight=&weight, suff=&suff, seed=&seed);
@@ -1592,8 +1735,8 @@ RUN;
 %MEND glm_in;
 
 %MACRO glmint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
  /*wrapper for logitint*/
  %logitint_in(Y=&y, indata=&indata,  outdata=&outdata,  binary_predictors= &binary_predictors,  ordinal_predictors=&ordinal_predictors,  nominal_predictors=&nominal_predictors,   continuous_predictors=&continuous_predictors,weight=&weight, suff=&suff, seed=&seed);
@@ -1601,8 +1744,8 @@ RUN;
 %MEND glmint_in;
 
 %MACRO mean_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* intercept only model */
   PROC GENMOD DATA = &indata;
@@ -1614,8 +1757,8 @@ RUN;
 %MEND mean_in;
 
 %MACRO mean_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* intercept only model */
   PROC GENMOD DATA = &indata;
@@ -1628,8 +1771,8 @@ RUN;
 %MEND mean_cn;
 
 %MACRO linreg_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* linear model */
   PROC GENMOD DATA = &indata;
@@ -1644,8 +1787,8 @@ RUN;
 *%linreg_cn( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO linregint_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* linear model */
   PROC GENMOD DATA = &indata;
@@ -1657,27 +1800,27 @@ RUN;
     OUTPUT OUT = &OUTDATA PRED=p_linregint&SUFF;
   RUN;
 %MEND linregint_cn;
-*%linreg_cn( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
+*%linregint_cn( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO glm_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
  /*GLM: wrapper for linreg*/
  %linreg_cn(Y=&y, indata=&indata,  outdata=&outdata(RENAME=(p_linreg&SUFF=p_glm&SUFF)),  binary_predictors= &binary_predictors,  ordinal_predictors=&ordinal_predictors,  nominal_predictors=&nominal_predictors,   continuous_predictors=&continuous_predictors,weight=&weight, suff=&suff, seed=&seed)
 %MEND glm_cn;
 
 %MACRO glmint_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
  /*wrapper for linregint*/
  %linregint_cn(Y=&y, indata=&indata,  outdata=&outdata(RENAME=(p_linregint&SUFF=p_glmint&SUFF)),  binary_predictors= &binary_predictors,  ordinal_predictors=&ordinal_predictors,  nominal_predictors=&nominal_predictors,   continuous_predictors=&continuous_predictors,weight=&weight, suff=&suff, seed=&seed)
 %MEND glmint_cn;
 
 %MACRO quantreg_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* quantile regression model */
   PROC QUANTREG DATA = &indata;
@@ -1692,8 +1835,8 @@ RUN;
 *%quantreg_cn( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO quantregint_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* quantile regression model */
   PROC QUANTREG DATA = &indata ;
@@ -1708,8 +1851,8 @@ RUN;
 *%quantregint_cn( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO lasso_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Logit model with LASSO  */
   PROC HPGENSELECT DATA=&indata TECH=QUANEW NOSTDERR  NOSTDERR LASSORHO=0.8 LASSOSTEPS=50 NORMALIZE=YES;
@@ -1726,8 +1869,8 @@ RUN;
 *%lasso_in( Y=y, indata=a,  outdata=lasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO back_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Logit model with backward selection  */
   PROC HPGENSELECT DATA=&indata TECH=QUANEW NOSTDERR;
@@ -1744,8 +1887,8 @@ RUN;
 *%back_in( Y=y, indata=a,  outdata=lasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO backint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Logit model with backward selection  */
   PROC HPGENSELECT DATA=&indata TECH=QUANEW NOSTDERR;
@@ -1762,8 +1905,8 @@ RUN;
 *%backint_in( Y=y, indata=a,  outdata=lasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO lassob_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   %__SLwarning(%str(lassob does not resepect the 0/1 probability space and should be used with extreme caution));
   /* Logit model with LASSO  */
@@ -1779,8 +1922,8 @@ RUN;
 %MEND lassob_in;
 
 %MACRO swise_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Logit model with stepwise model selection  */
   PROC HPGENSELECT DATA=&indata TECH=QUANEW NOSTDERR;
@@ -1797,8 +1940,8 @@ RUN;
 *%swise_in( Y=y, indata=a,  outdata=lasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO lassoint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Logit model with LASSO - including interaction terms */
   PROC HPGENSELECT DATA=&indata  TECH=QUANEW; 
@@ -1815,8 +1958,8 @@ RUN;
 *%lassoint_in( Y=y, indata=a,  outdata=lasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO swiseint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Logit model with stepwise model selection  */
   PROC HPGENSELECT DATA=&indata TECH=QUANEW NOSTDERR;
@@ -1832,8 +1975,8 @@ RUN;
 %MEND swiseint_in;
 
 %MACRO lassobint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   %__SLwarning(%str(lassoint2 does not resepect the 0/1 probability space and shoudld be used with extreme caution));
   /* Logit model with LASSO - including interaction terms */
@@ -1851,8 +1994,8 @@ RUN;
 *%lasso_in( Y=y, indata=a,  outdata=lasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO lasso_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* LASSO model, continuous */
   PROC HPGENSELECT DATA=&indata TECH=QUANEW NOSTDERR NORMALIZE=YES;
@@ -1869,8 +2012,8 @@ RUN;
 *%lasso_cn( Y=y, indata=a,  outdata=lasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO back_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* backward selection model, continuous */
   PROC HPGENSELECT DATA=&indata TECH=QUANEW NOSTDERR;
@@ -1887,8 +2030,8 @@ RUN;
 *%back_cn( Y=y, indata=a,  outdata=lasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO backint_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* backward selection model, continuous */
   PROC HPGENSELECT DATA=&indata TECH=QUANEW NOSTDERR;
@@ -1905,8 +2048,8 @@ RUN;
 *%backint_cn( Y=y, indata=a,  outdata=lasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO lassob_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* linear model with LASSO  */
   PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
@@ -1923,8 +2066,8 @@ RUN;
 *%lasso_in( Y=y, indata=a,  outdata=lasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO ridge_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* ridge regression with linear model only */
   PROC REG DATA = &indata RIDGE=0 TO 10 by 0.05 OUTEST=__sltm0017_;
@@ -1942,8 +2085,8 @@ RUN;
 *%ridge_cn( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO ridge_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* ridge regression with binary data */
   %__SLwarning(%str(ridge does not resepect the 0/1 probability space and should be used with extreme caution));
@@ -1962,8 +2105,8 @@ RUN;
 *%ridge_cn( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO swise_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* linear model with stepwise model selection  */
   PROC HPGENSELECT DATA=&indata TECH=QUANEW NOSTDERR;
@@ -1979,8 +2122,8 @@ RUN;
 %MEND swise_cn;
 
 %MACRO swiseint_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* linear model with stepwise model selection, interaction terms  */
   PROC HPGENSELECT DATA=&indata TECH=QUANEW NOSTDERR;
@@ -1995,8 +2138,8 @@ RUN;
 %MEND swiseint_cn;
 
 %MACRO lassoint_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* LASSO model, continuous, with interaction terms */
   PROC HPGENSELECT DATA=&indata TECH=QUANEW NOSTDERR NORMALIZE=YES;
@@ -2013,8 +2156,8 @@ RUN;
 *%lassoint_cn( Y=y, indata=a,  outdata=lasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO lassointb_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* linear model with LASSO  */
   PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
@@ -2029,8 +2172,8 @@ RUN;
 %MEND lassointb_cn;
 
 %MACRO lassocv_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* LASSO model, selection by cross validation */
   PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
@@ -2039,14 +2182,14 @@ RUN;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / 
-    SELECTION=LASSO(CHOOSE=CV STOP=CV);
+    SELECTION=LASSO(CHOOSE=CVEX STOP=NONE);
     OUTPUT OUT =&outdata(DROP=_CVINDEX:) PRED=p_lassocv&SUFF;
   RUN;
 %MEND lassocv_cn;
 
 %MACRO lassointcv_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* LASSO model, selection by cross validation */
   PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
@@ -2055,14 +2198,14 @@ RUN;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms/ 
-    SELECTION=LASSO(CHOOSE=CV STOP=CV);
+    SELECTION=LASSO(CHOOSE=CVEX STOP=NONE);
     OUTPUT OUT =&outdata(DROP=_CVINDEX:) PRED=p_lassointcv&SUFF;
   RUN;
 %MEND lassointcv_cn;
 
 %MACRO lassocv_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* LASSO model, selection by cross validation (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
   %lassocv_cn(Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,
@@ -2070,17 +2213,17 @@ RUN;
 %MEND lassocv_in;
 
 %MACRO lassointcv_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* LASSO model, selection by cross validation (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */  
-  %lassocv_in(Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,
+  %lassointcv_cn(Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,
                nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight ,suff=&suff, seed=&seed);
 %MEND lassointcv_in;
 
 %MACRO lar_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
   PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
@@ -2096,8 +2239,8 @@ RUN;
 *%lar_in( Y=y, indata=a,  outdata=lar_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO larint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) with interaction terms */
   PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
@@ -2113,8 +2256,8 @@ RUN;
 *%lar_in( Y=y, indata=a,  outdata=lar_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO lar_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* least angle regression model, continuous - just a wrapper */
 
@@ -2123,8 +2266,8 @@ RUN;
 *%lar_cn( Y=y, indata=a,  outdata=lar_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO larint_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* least angle regression model, continuous, interaction terms - just a wrapper */
   %larint_in(Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors &SLIXterms,weight=&weight ,suff=&suff, seed=&seed);
@@ -2132,8 +2275,8 @@ RUN;
 *%larint_cn( Y=y, indata=a,  outdata=lar_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO enet_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Elastic net model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
   PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
@@ -2149,8 +2292,8 @@ RUN;
 *%enet_in( Y=y, indata=a,  outdata=ENET_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO enetint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Elastic net model, interaction terms (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
   PROC GLMSELECT DATA = &indata NOPRINT SEED=&seed;
@@ -2166,8 +2309,8 @@ RUN;
 *%enet_in( Y=y, indata=a,  outdata=ENET_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO enet_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Elastic net model , continuous - just a wrapper */
 
@@ -2176,8 +2319,8 @@ RUN;
 *%enet_cn( Y=y, indata=a,  outdata=lar_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO enetint_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Elastic net model , continuous, interaction terms - just a wrapper */
 
@@ -2186,8 +2329,8 @@ RUN;
 *%enetint_cn( Y=y, indata=a,  outdata=lar_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO cvcart_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* classification tree with cross validated pruning*/
   
@@ -2208,8 +2351,8 @@ RUN;
 %MEND cvcart_in;
 
 %MACRO cvcart_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* regression tree with cross validated pruning*/
   
@@ -2230,8 +2373,8 @@ RUN;
 %MEND cvcart_cn;
 
 %MACRO cart_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* classification tree, no cross validation */
   
@@ -2251,8 +2394,8 @@ RUN;
 %MEND cart_in;
 
 %MACRO cart_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* regression tree, no cross validation */
   
@@ -2272,8 +2415,8 @@ RUN;
 %MEND cart_cn;
 
 %MACRO nn_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* neural network */
   PROC HPNEURAL DATA = &indata  ;
@@ -2293,8 +2436,8 @@ RUN;
 %MEND nn_in;
 
 %MACRO nn_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* neural network regression*/
   PROC HPNEURAL DATA = &indata  ;
@@ -2316,8 +2459,8 @@ RUN;
 %MEND nn_cn;
 
 %MACRO gam_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* GENERALIZED ADDITIVE MODEL */
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
@@ -2348,8 +2491,8 @@ RUN;
 %MEND gam_in;
 
 %MACRO gamint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* GENERALIZED ADDITIVE MODEL */
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
@@ -2380,8 +2523,8 @@ RUN;
 %MEND gamint_in;
 
 %MACRO gam_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* GENERALIZED ADDITIVE MODEL for continuous variable (normal assumption)*/
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
@@ -2413,8 +2556,8 @@ RUN;
 %MEND gam_cn;
 
 %MACRO gamint_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* GENERALIZED ADDITIVE MODEL for continuous variable (normal assumption), interaction terms*/
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
@@ -2446,8 +2589,8 @@ RUN;
 %MEND gamint_cn;
 
 %MACRO gampl_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* GENERALIZED ADDITIVE MODEL (using alternative sas proc) */
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
@@ -2481,8 +2624,8 @@ RUN;
 %MEND gampl_in;
 
 %MACRO gamplint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* GENERALIZED ADDITIVE MODEL (using alternative sas proc), interaction terms */
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
@@ -2516,8 +2659,8 @@ RUN;
 %MEND gamplint_in;
 
 %MACRO gampl_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* GENERALIZED ADDITIVE MODEL for continuous variable (using alternative sas proc) */
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
@@ -2551,8 +2694,8 @@ RUN;
 %MEND gampl_cn;
 
 %MACRO gamplint_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* GENERALIZED ADDITIVE MODEL for continuous variable (using alternative sas proc), interaction terms */
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
@@ -2584,8 +2727,8 @@ RUN;
 %MEND gamplint_cn;
 
 %MACRO mars_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* multivariate adaptive regression splines */
   PROC ADAPTIVEREG DATA = &indata SEED=&seed;
@@ -2601,8 +2744,8 @@ RUN;
 %MEND mars_in;
 
 %MACRO mars_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* multivariate adaptive regression splines, continuous */
   PROC ADAPTIVEREG DATA = &indata SEED=&seed;
@@ -2615,8 +2758,8 @@ RUN;
 %MEND mars_cn;
 
 %MACRO marsint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* multivariate adaptive regression splines, including interactions */
   PROC ADAPTIVEREG DATA = &indata SEED=&seed;
@@ -2633,8 +2776,8 @@ RUN;
 %MEND marsint_in;
 
 %MACRO marsint_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* multivariate adaptive regression splines, continuous including interactions */
   PROC ADAPTIVEREG DATA = &indata SEED=&seed;
@@ -2647,8 +2790,8 @@ RUN;
 %MEND marsint_cn;
 
 %MACRO loess_cn(      
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
  /* local regression*/ 
   PROC LOESS DATA = &indata;
@@ -2660,8 +2803,8 @@ RUN;
 %MEND loess_cn; 
 
 %MACRO loess_in(  
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
 /* local regression*/
   PROC LOESS DATA = &indata;
@@ -2673,8 +2816,8 @@ RUN;
 %MEND loess_in; /*optional: include macro name in mend statement with [libraryname]_cn*/
 
 %MACRO probit_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* probit model */
   PROC PROBIT DATA = &indata;
@@ -2689,8 +2832,8 @@ RUN;
 *%probit_in( Y=y, indata=a,  outdata=test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO probitint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* probit model */
   PROC PROBIT DATA = &indata;
@@ -2705,8 +2848,8 @@ RUN;
 *%probitint_in( Y=y, indata=a,  outdata=test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO svm_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Support vector machine classification*/
   PROC HPSVM DATA = &indata;
@@ -2721,8 +2864,8 @@ RUN;
 %MEND svm_in;
 
 %MACRO svmrbf_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Support vector machine classification, rbf kernel*/
  PROC HPSVM DATA = &indata METHOD=ACTIVESET;
@@ -2738,8 +2881,8 @@ RUN;
 %MEND svmrbf_in;
 
 %MACRO boost_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* gradient boosting*/
   &suppresswarn %__SLwarning(%str(This function (BOOST) is untested below SAS 9.4 TS1M3));
@@ -2762,8 +2905,8 @@ RUN;
 %MEND boost_in;
 
 %MACRO boosting_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* gradient boosting*/
   &suppresswarn %__SLwarning(%str(This function (BOOST) is untested below SAS 9.4 TS1M3));
@@ -2787,8 +2930,8 @@ RUN;
 
 
 %MACRO boost_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* gradient boosting*/
   &suppresswarn %__SLwarning(%str(This function (BOOST) is untested below SAS 9.4 TS1M3));
@@ -2812,8 +2955,8 @@ RUN;
 %MEND boost_cn;
 
 %MACRO boosting_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* gradient boosting (same as boost_cn)*/
   &suppresswarn %__SLwarning(%str(This function (BOOST) is untested below SAS 9.4 TS1M3));
@@ -2837,8 +2980,8 @@ RUN;
 %MEND boosting_cn;
 
 %MACRO bagging_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* bootstrap aggregation*/
   &suppresswarn %__SLwarning(%str(This function (bagging) is experimental and untested below SAS 9.4 TS1M3));
@@ -2862,8 +3005,8 @@ RUN;
 %MEND bagging_in;
 
 %MACRO bagging_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* bootstrap aggregation*/
   &suppresswarn %__SLwarning(%str(This function (bagging) is experimental and untested below SAS 9.4 TS1M3));
@@ -2887,8 +3030,8 @@ RUN;
 %MEND bagging_cn;
 
 %MACRO sherwood_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Random forest with replacement*/
   &suppresswarn %__SLwarning(%str(This function (bagging) is experimental and untested below SAS 9.4 TS1M3));
@@ -2912,8 +3055,8 @@ RUN;
 %MEND sherwood_in;
 
 %MACRO sherwood_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Random forest, with replacement*/
   &suppresswarn %__SLwarning(%str(This function (bagging) is experimental and untested below SAS 9.4 TS1M3));
@@ -2937,8 +3080,8 @@ RUN;
 %MEND sherwood_cn;
 
 %MACRO knn_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   PROC DISCRIM DATA = &indata METHOD = npar KPROP=.01 /*K = 5*/ TESTDATA=&indata 
     TESTOUT = &outdata(DROP = _0 _into_ RENAME=(_1=p_knn&suff)) NOPRINT;
@@ -2950,8 +3093,8 @@ RUN;
 %MEND knn_in;
 
 %MACRO pbspline_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Penalized basis splines: not very useful*/
   %LET _pvar = p_pbspline&SUFF;
@@ -2967,8 +3110,8 @@ RUN;
 %MEND pbspline_cn;
 
  %MACRO bspline_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* b-splines - minimizes squared error*/
   PROC TRANSREG DATA = &indata MAXITER=100;
@@ -2983,8 +3126,8 @@ RUN;
 %MEND bspline_cn;
 
  %MACRO boxcox_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* BOX COX non-linear transformation - minimizes squared error*/
   PROC TRANSREG DATA = &indata MAXITER=100;
@@ -3000,8 +3143,8 @@ RUN;
 
 * super learner library member 'deepnn';
 %MACRO deepnn_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* 
   deep neural network regression
@@ -3080,8 +3223,8 @@ RUN;
 %MEND deepnn_cn;
 
 %MACRO deepnn_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* 
   deep neural network classification
@@ -3160,8 +3303,8 @@ RUN;
 %MEND deepnn_in;
 
 %MACRO hplogit_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* logistic model */
   PROC HPLOGISTIC DATA = &indata NOPRINT;
@@ -3176,8 +3319,8 @@ RUN;
 *%hplogit_in( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO hplogitint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* logistic model with interaction terms*/
   PROC HPLOGISTIC DATA = &indata NOPRINT ;
@@ -3192,8 +3335,8 @@ RUN;
 *%hplogit_in( Y=y, indata=a,  outdata=LOGIT_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO hplinreg_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* linear regression model */
   PROC HPREG DATA = &indata NOPRINT SEED=&seed;
@@ -3209,8 +3352,8 @@ RUN;
 *%hplinreg_in( Y=y, indata=a,  outdata=hplinreg_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO hplinregint_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* linear regression model with interaction terms */
   PROC HPREG DATA = &indata NOPRINT SEED=&seed;
@@ -3227,10 +3370,10 @@ RUN;
 
 
 %MACRO hplasso_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
-  /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
+  /* LASSO regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
   PROC HPREG DATA = &indata NOPRINT SEED=&seed;
     FORMAT &Y;
     ODS SELECT NONE;
@@ -3245,10 +3388,10 @@ RUN;
 *%hplasso_in( Y=y, indata=a,  outdata=hplasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO hplassoint_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
-  /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) with interaction terms */
+  /* LASSO regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) with interaction terms */
   PROC HPREG DATA = &indata NOPRINT SEED=&seed;
     FORMAT &Y;
     ODS SELECT NONE;
@@ -3263,8 +3406,8 @@ RUN;
 *%hplasso_cn( Y=y, indata=a,  outdata=hplasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO hplar_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
   PROC HPREG DATA = &indata NOPRINT SEED=&seed;
@@ -3281,8 +3424,8 @@ RUN;
 *%hpLAR_in( Y=y, indata=a,  outdata=hpLAR_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO hplarint_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) with interaction terms */
   PROC HPREG DATA = &indata NOPRINT SEED=&seed;
@@ -3298,8 +3441,8 @@ RUN;
 %MEND hplarint_cn;
 *%hpLAR_cn( Y=y, indata=a,  outdata=hpLAR_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 %MACRO hplasso_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
   PROC HPREG DATA = &indata NOPRINT SEED=&seed;
@@ -3316,8 +3459,8 @@ RUN;
 *%hplasso_in( Y=y, indata=a,  outdata=hplasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO hplassoint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) with interaction terms */
   PROC HPREG DATA = &indata NOPRINT SEED=&seed;
@@ -3334,8 +3477,8 @@ RUN;
 *%hplasso_in( Y=y, indata=a,  outdata=hplasso_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO hplar_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
   PROC HPREG DATA = &indata NOPRINT SEED=&seed;
@@ -3352,8 +3495,8 @@ RUN;
 *%hpLAR_in( Y=y, indata=a,  outdata=hpLAR_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO hplarint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* least angle regression model (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) with interaction terms */
   PROC HPREG DATA = &indata NOPRINT SEED=&seed;
@@ -3370,37 +3513,70 @@ RUN;
 *%hpLAR_in( Y=y, indata=a,  outdata=hpLAR_test,  binary_predictors= X l,  ordinal_predictors=,  nominal_predictors=,   continuous_predictors=, suff= );
 
 %MACRO hpglm_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
  /*hpglm: wrapper for linreg*/
  %hplogit_cn(Y=&y, indata=&indata,  outdata=&outdata(RENAME=(p_hplogit&SUFF=p_hpglm&SUFF)),  binary_predictors= &binary_predictors,  ordinal_predictors=&ordinal_predictors,  nominal_predictors=&nominal_predictors,   continuous_predictors=&continuous_predictors,weight=&weight, suff=&suff, seed=&seed)
 %MEND hpglm_in;
 
 %MACRO hpglmint_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
  /*wrapper for linregint*/
  %hplogitint_cn(Y=&y, indata=&indata,  outdata=&outdata(RENAME=(p_hplogitint&SUFF=p_hpglmint&SUFF)),  binary_predictors= &binary_predictors,  ordinal_predictors=&ordinal_predictors,  nominal_predictors=&nominal_predictors,   continuous_predictors=&continuous_predictors,weight=&weight, suff=&suff, seed=&seed)
 %MEND hpglmint_in;
 
 %MACRO hpglm_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
  /*hpglm: wrapper for linreg*/
  %hplinreg_cn(Y=&y, indata=&indata,  outdata=&outdata(RENAME=(p_hplinreg&SUFF=p_hpglm&SUFF)),  binary_predictors= &binary_predictors,  ordinal_predictors=&ordinal_predictors,  nominal_predictors=&nominal_predictors,   continuous_predictors=&continuous_predictors,weight=&weight, suff=&suff, seed=&seed)
 %MEND hpglm_cn;
 
 %MACRO hpglmint_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
  /*wrapper for linregint*/
  %hplinregint_cn(Y=&y, indata=&indata,  outdata=&outdata(RENAME=(p_hplinregint&SUFF=p_hpglmint&SUFF)),  binary_predictors= &binary_predictors,  ordinal_predictors=&ordinal_predictors,  nominal_predictors=&nominal_predictors,   continuous_predictors=&continuous_predictors,weight=&weight, suff=&suff, seed=&seed)
 %MEND hpglmint_cn;
 
+%MACRO hal_cn(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, suff=, seed=
+);
+  /* Highly adaptive LASSO model, selection by cross validation, minimizing CV residual sum of squares */
+  %GetHALDesign(y=&y, vars=&binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors , 
+                indata=&indata, outdata=__sltm0017_, drop=FALSE);
+  OPTIONS MERGENOBY=NOWARN;
+  DATA __sltm0016_;
+   MERGE &indata(KEEP=&Y &weight) __sltm0017_;
+  RUN;
+  PROC GLMSELECT DATA = __sltm0016_ NOPRINT SEED=&seed;
+    FORMAT &Y;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    ODS SELECT NONE;
+    MODEL &Y = __hal_: / SELECTION=LASSO(CHOOSE=CVEX STOP=NONE) CVMETHOD=RANDOM(10);
+    OUTPUT OUT =__sltm0016_(KEEP=p_hal&SUFF) PRED=p_hal&SUFF;
+  RUN;
+  DATA &outdata;
+   MERGE &indata __sltm0016_;
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+%MEND hal_cn;
+
+%MACRO hal_in(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+);
+  /* Highly adaptive LASSO model, selection by cross validation, minimizing CV residual sum of squares 
+     (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
+  %hal_cn(Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,
+               nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight, suff=&suff, seed=&seed);
+%MEND hal_in;
 
 /********************************************************;
 * Part 2: learner functions that call R;
@@ -3408,8 +3584,8 @@ RUN;
 ********************************************************/
 
 %MACRO r_rf_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'randomForest' must be installed));;
   *weights not implemented;
@@ -3451,8 +3627,8 @@ RUN;
 *%r_rf_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_rf_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'randomForest' must be installed));;
   *weights not implemented;
@@ -3496,8 +3672,8 @@ RUN;
 *%r_rf_in(Y=yb,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_mars_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'earth' must be installed));;
   DATA __sltm0016_;
@@ -3538,8 +3714,8 @@ RUN;
 *%r_mars_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_mars_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'earth' must be installed));;
   DATA __sltm0016_;
@@ -3581,8 +3757,8 @@ RUN;
 *%r_mars_in(Y=yb,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_bart_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'dbarts' must be installed));;
   %__SLnote(%str(This function will likely give a warning about a quoted string being too long. This warning should be safe to ignore.));;
@@ -3630,8 +3806,8 @@ RUN;
 *%r_bart_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_bart_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'dbarts' must be installed));;
   %__SLnote(%str(This function will likely give a warning about a quoted string being too long. This warning should be safe to ignore.));;
@@ -3679,8 +3855,8 @@ RUN;
 *%r_bart_in(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_bagging_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R packages 'ipred' and 'rpart'  must be installed));;
   DATA __sltm0016_;
@@ -3725,8 +3901,8 @@ RUN;
 *%r_bagging_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_bagging_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R packages 'ipred' and 'rpart'  must be installed));;
   DATA __sltm0016_;
@@ -3771,8 +3947,8 @@ RUN;
 *%r_bagging_in(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_polymars_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'polspline' must be installed));;
   DATA __sltm0016_;
@@ -3813,8 +3989,8 @@ RUN;
 *%r_polymars_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_polymars_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'polspline' must be installed));;
   DATA __sltm0016_;
@@ -3856,8 +4032,8 @@ RUN;
 *%r_polymars_in(Y=yb,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_boost_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R packages 'xgboost' must be installed));;
   DATA __sltm0016_;
@@ -3902,8 +4078,8 @@ RUN;
 *%r_boost_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_boost_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R packages 'xgboost' must be installed));;
   DATA __sltm0016_;
@@ -3948,8 +4124,8 @@ RUN;
 *%r_boost_in(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_svm_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'e1071' must be installed));;
   DATA __sltm0016_;
@@ -3992,8 +4168,8 @@ RUN;
 *%r_svm_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_svm_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'e1071' must be installed));;
   DATA __sltm0016_;
@@ -4036,8 +4212,8 @@ RUN;
 *%r_svm_in(Y=x,indata=train, outdata=tdat, binary_predictors=l, ordinal_predictors= , nominal_predictors=,  continuous_predictors=c c2,suff=test);
 
 %MACRO r_gam_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'gam' must be installed));;
   DATA __sltm0016_;
@@ -4085,8 +4261,8 @@ RUN;
 *%r_gam_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_gam_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'gam' must be installed));;
   DATA __sltm0016_;
@@ -4134,8 +4310,8 @@ RUN;
 *%r_gam_in(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_lasso_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R packages 'glmnet' must be installed));;
   DATA __sltm0016_;
@@ -4181,8 +4357,8 @@ RUN;
 *%r_lasso_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_lasso_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R packages 'glmnet' must be installed));;
   DATA __sltm0016_;
@@ -4228,8 +4404,8 @@ RUN;
 *%r_lasso_in(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_enet_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R packages 'glmnet' must be installed));;
   DATA __sltm0016_;
@@ -4275,8 +4451,8 @@ RUN;
 *%r_enet_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_enet_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R packages 'glmnet' must be installed));;
   DATA __sltm0016_;
@@ -4322,8 +4498,8 @@ RUN;
 *%r_enet_in(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_ridge_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R packages 'glmnet' must be installed));;
   DATA __sltm0016_;
@@ -4369,8 +4545,8 @@ RUN;
 *%r_ridge_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_ridge_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R packages 'glmnet' must be installed));;
   DATA __sltm0016_;
@@ -4416,8 +4592,8 @@ RUN;
 *%r_ridge_in(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_rpart_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'rpart' must be installed));;
   DATA __sltm0016_;
@@ -4463,8 +4639,8 @@ RUN;
 *%r_rpart_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_rpartprune_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'rpart' must be installed));;
   DATA __sltm0016_;
@@ -4512,8 +4688,8 @@ RUN;
 *%r_rpartprune_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_rpartprune_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'rpart' must be installed));;
   DATA __sltm0016_;
@@ -4561,8 +4737,8 @@ RUN;
 *%r_rpartprune_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_sl_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'SuperLearner' must be installed));;
   DATA __sltm0016_;
@@ -4610,8 +4786,8 @@ RUN;
 *%r_sl_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 %MACRO r_sl_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
   %__SLnote(%str(R package 'SuperLearner' must be installed));;
   DATA __sltm0016_;
@@ -4662,7 +4838,7 @@ RUN;
 * Part 3: main functions;
 ********************************************************;
 
-%MACRO _cvsetup(Y, indata, outdata, folds);
+%MACRO _cvsetup(Y, id, indata, outdata, folds);
 /*
  expand input dataset for cross validation
 */
@@ -4673,8 +4849,13 @@ RUN;
  
  /*PROC SORT DATA = __sltm005_; BY __rnS; RUN;*/
   %IF %__TrueCheck(&shuffle) %THEN %DO;
-  PROC SQL NOPRINT;
-   CREATE TABLE &outdata(DROP=__rnS) AS SELECT *, RANUNI(&SLseed) AS __rnS FROM __sltm005_ ORDER BY __rnS;QUIT;
+    PROC SQL NOPRINT;
+     CREATE TABLE &outdata(DROP=__rnS) AS SELECT *, RANUNI(&SLseed) AS __rnS FROM __sltm005_ ORDER BY __rnS;QUIT;
+    /* TODO - allow sort of clusters identified by 'id' */
+    %IF &ID ^= %THEN %DO;
+     PROC SQL NOPRINT;
+      CREATE TABLE &outdata(DROP=__rnS) AS SELECT *, RANUNI(&SLseed) AS __rnS FROM __sltm005_ ORDER BY __rnS GROUP BY &id;QUIT;
+    %END;
   %END;
   %IF %__FalseCheck(&shuffle) %THEN %DO;
     PROC SQL NOPRINT; CREATE TABLE &outdata AS SELECT * FROM __sltm005_;QUIT;
@@ -4685,6 +4866,7 @@ RUN;
   ARRAY __CV[&folds];
   ARRAY &y.__CV__[&folds];
   DO _k = 1 TO &FOLDS;
+  /* TODO - allow fold-maintenance of clusters identified by 'id' */
    IF &SLSampSize/&folds*(_k-1) < __cvid__ <= &SLSampSize/&folds*_k THEN __CV[_k] = 0;
    ELSE __CV[_k] = 1;
    IF __CV[_k] = 1 THEN &y.__CV__[_k] = &Y;
@@ -4791,8 +4973,8 @@ RUN;
 
 %MACRO _selectlearnersBERNOULLI(
              library=,
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
 
  %__SLnote(_selectlearnersBERNOULLI);
@@ -4810,8 +4992,8 @@ RUN;
 
 %MACRO _selectlearnersGAUSSIAN(
              library=,
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
 
  %__SLnote(_selectlearnersGAUSSIAN);
@@ -4829,8 +5011,8 @@ RUN;
 
 %MACRO _selectlearnersstratBERNOULLI(
              library=,
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
 
  %__SLnote(_selectlearnersstratBERNOULLI);
@@ -4850,8 +5032,8 @@ RUN;
 
 %MACRO _selectlearnersstratGAUSSIAN(
              library=,
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
  
   %__SLnote(_selectlearnersstratGAUSSIAN);
@@ -4869,7 +5051,7 @@ RUN;
   %END;
 %MEND _selectlearnersstratGAUSSIAN;
 
-%MACRO _getcvpredsBERNOULLI(Y=, indata=, outdata=, library=, folds=, weight=, seed=);
+%MACRO _getcvpredsBERNOULLI(Y=, indata=, outdata=, library=, folds=, weight=, id=, seed=);
   /* create cross validated predictions using members of the super learner library*/
   %LOCAL k_k;
   %__SLnote(_getcvpreds: getting overall and cross-validated predictions of &Y);
@@ -4884,6 +5066,7 @@ RUN;
                binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
                seed=&seed,
                weight=&weight,
+               id=&id,
                suff=_full
     );
   %END;
@@ -4896,6 +5079,7 @@ RUN;
                binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
                seed=&seed,
                weight=&weight,
+               id=&id,
                suff=_full
     );
   %END;
@@ -4916,25 +5100,27 @@ RUN;
     %IF %__truecheck(&printfolds) %THEN %PUT Fold &k_k of &folds;;
     %IF %__TrueCheck(&trtstrat) %THEN %DO;
       %_selectlearnersstratBERNOULLI(
-                 library=&library,
-                 Y=&y.__CV__&k_k,
-                 indata=&indata, 
-                 outdata=&indata, 
-                 binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
-                 seed=&seed,
-                 weight=&weight,
-                 suff=&k_k      );
+               library=&library,
+               Y=&y.__CV__&k_k,
+               indata=&indata, 
+               outdata=&indata, 
+               binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
+               seed=&seed,
+               weight=&weight,
+               id=&id,
+               suff=&k_k      );
     %END;
     %IF %__FalseCheck(&trtstrat) %THEN %DO;
       %_selectlearnersBERNOULLI(
-                 library=&library,
-                 Y=&y.__CV__&k_k,
-                 indata=&indata, 
-                 outdata=&indata, 
-                 binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
-                 seed=&seed,
-                 weight=&weight,
-                 suff=&k_k
+               library=&library,
+               Y=&y.__CV__&k_k,
+               indata=&indata, 
+               outdata=&indata, 
+               binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
+               seed=&seed,
+               weight=&weight,
+               id=&id,
+               suff=&k_k
       );
     %END;
     OPTIONS SYNTAXCHECK;
@@ -4948,7 +5134,7 @@ RUN;
 *%LET binary_predictors = x l;
 *%_getcvpredsBERNOULLI(Y=z,indata=__sltm001_, outdata=test_getcvpreds, library= logit rf, folds=3);
 
-%MACRO _getcvpredsGAUSSIAN(Y=,indata=, outdata=, library=, folds=, weight=, seed=);
+%MACRO _getcvpredsGAUSSIAN(Y=,indata=, outdata=, library=, folds=, weight=, id=, seed=);
   /* create cross validated predictions using members of the super learner library*/
   %LOCAL k_k;
   %__SLnote(_getcvpreds);
@@ -4963,6 +5149,7 @@ RUN;
                binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
                seed=&seed,
                weight=&weight,
+               id=&id,
                suff=_full
     );
   %END;
@@ -4975,6 +5162,7 @@ RUN;
                binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
                seed=&seed,
                weight=&weight,
+               id=&id,
                suff=_full
     );
   %END;
@@ -4995,26 +5183,28 @@ RUN;
     %IF %__truecheck(&printfolds) %THEN %PUT Fold &k_k of &folds;;
     %IF %__TrueCheck(&trtstrat) %THEN %DO;
       %_selectlearnersstratGAUSSIAN(
-                 library=&library,
-                 Y=&y.__CV__&k_k,
-                 indata=&indata, 
-                 outdata=&indata, 
-                 binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
-                 seed=&seed,
-                 weight=&weight,
-                 suff=&k_k
+               library=&library,
+               Y=&y.__CV__&k_k,
+               indata=&indata, 
+               outdata=&indata, 
+               binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
+               seed=&seed,
+               weight=&weight,
+               id=&id,
+               suff=&k_k
       );
     %END;
     %IF %__FalseCheck(&trtstrat) %THEN %DO;
       %_selectlearnersGAUSSIAN(
-                 library=&library,
-                 Y=&y.__CV__&k_k,
-                 indata=&indata, 
-                 outdata=&indata, 
-                 binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
-                 seed=&seed,
-                 weight=&weight,
-                 suff=&k_k
+               library=&library,
+               Y=&y.__CV__&k_k,
+               indata=&indata, 
+               outdata=&indata, 
+               binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,
+               seed=&seed,
+               weight=&weight,
+               id=&id,
+               suff=&k_k
       );
     %END;
   %END;
@@ -5246,7 +5436,7 @@ RUN;
       %IF (&method IN(BNNRIDGE BCCRIDGE BRIDGE)) %THEN %DO;
          * ridge methods, penalization by offset;
         %LET l_l = 1;
-        f = (Y-( 0
+        f = (&Y-( 0
           %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); + __slcoef_&l_l * __v&l_l  %LET l_l = %EVAL(&l_l +1); %END;
           ))**2
           ;
@@ -5260,7 +5450,7 @@ RUN;
       %IF (&method IN(BNNLASSO BCCLASSO BLASSO)) %THEN %DO;
          * LASSO methods, penalization by offset;
         %LET l_l = 1;
-        f = (Y-( 0
+        f = (&Y-( 0
           %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); + __slcoef_&l_l * __v&l_l  %LET l_l = %EVAL(&l_l +1); %END;
           ))**2
           ;
@@ -5785,8 +5975,8 @@ Below are several macros with examples of using super learner
   *adding in a custom learner (custom_cn for 'continuous' and custom_in for 'binary');
   * example: new link function with gamma distribution;
   %MACRO custom_cn(/*change macro name with [libraryname]_cn*/
-                  Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                  nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
     /* gamma model */
     PROC GENMOD DATA = &indata;
@@ -5919,5 +6109,8 @@ OPTIONS NOMPRINT;
 *%test_cvsl(n=300);
 /**********************************************************************************************************************
 * MINOR UPDATES
-* none yet
+* 13-AUG-2018 Bug with BLASSO, BRIDGE methods (hard coded outcome value). 
+              Added nominal support for clustering (only in CV selection).
+              Minor change with lassocv learners
+              Added highly adaptive lasso learner (Experimental)
 **********************************************************************************************************************/
