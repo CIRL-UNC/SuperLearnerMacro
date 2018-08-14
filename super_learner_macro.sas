@@ -6111,6 +6111,6 @@ OPTIONS NOMPRINT;
 * MINOR UPDATES
 * 13-AUG-2018 Bug with BLASSO, BRIDGE methods (hard coded outcome value). 
               Added nominal support for clustering (only in CV selection).
-              Minor change with lassocv learners
+              Minor change with lassocv, lassocvint learners
               Added highly adaptive lasso learner (Experimental)
 **********************************************************************************************************************/
