@@ -1,8 +1,8 @@
-%PUT super learner macro v1.0.3;
+%PUT super learner macro v1.0.4;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version: 1.0.3
+* Version: 1.0.4
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS (tested on sas 9.4 TS1M3)
@@ -1303,16 +1303,18 @@ RUN;
 %MACRO __RENAMEDESIGN(VARS);
   /* give library specific predictions standard variable names
      to facilitate proc optmodel statements
+     - by necessity these are very short names "_#", which is needed to allow
+       as many terms as will fit.
   */
-  %GLOBAL __slhalvars;
+  %GLOBAL __SLhalvars;
   %LET __slhalvars = ;
   %__SLnote(__RENAMEDESIGN);
   %LOCAL l_l ;
   %LET l_l = 1;
   RENAME 
   %DO %WHILE(%SCAN(&vars, &l_l)^=);
-    %LET __slhalvars = &__slhalvars __v&l_l;
-    %SCAN(&vars, &l_l) =  __v&l_l
+    %LET __slhalvars = &__slhalvars _&l_l;
+    %SCAN(&vars, &l_l) =  _&l_l
     %LET l_l = %EVAL(1+&l_l);
   %END;;
 %MEND __RENAMEDESIGN;
@@ -1330,8 +1332,10 @@ RUN;
   /*
   to do:
    1. Make more robust to variable naming (e.g. rename variables to v1,v2,v3, etc. in prelim step)
+   2. Current implementation is limited by maximum macro size - may need to refactor. The number of interaction terms 
+     is currently controlled by hard limits
   */
-  %LOCAL haln halnt __hidx __halterms __nhalterms __halmains __nhalmains __HALBAR;
+  %LOCAL haln halnt __hidx __halterms __nhalterms __halmains __nhalmains __HALBAR __hallimit;
   /*
     0. preprocessing
   */
@@ -1349,26 +1353,38 @@ RUN;
   DATA fake;
     SET __sltm0017_ (OBS=1);
 	WHERE &y>.z;
-  * leverage glmmod for creating all possible interaction terms;
-  PROC GLMMOD DATA=fake OUTPARM=__halterms  NOPRINT;
-    MODEL &Y = &__halbar / NOINT ;
-  PROC GLMMOD DATA=fake OUTPARM=__halmains NOPRINT;
+  * main terms only first;
+  PROC GLMMOD DATA=fake OUTPARM=__halmains NOPRINT NAMELEN=200;
     MODEL &Y = &__slhalvars / NOINT ;
   PROC SQL NOPRINT;
-    SELECT EFFNAME INTO :__halterms SEPARATED BY " " 
-      FROM __halterms;
-    SELECT EFFNAME INTO :__halmains SEPARATED BY " " 
+    SELECT STRIP(EFFNAME) INTO :__halmains SEPARATED BY " " 
       FROM __halmains;
+  DATA __halmains;
+   SET __halmains END=EOF;
+   IF eof THEN CALL SYMPUT("__nhalmains", PUT(_COLNUM_, 9.0));
+  RUN;  
+  * limiting the depth of interaction terms to allow for sas macro length limits;
+  %LET __hallimit = &__NHALMAINS;
+  %IF %EVAL(&__NHALMAINS > 11) %THEN %LET __hallimit = 6;
+  %IF %EVAL(&__NHALMAINS > 12) %THEN %LET __hallimit = 5;
+  %IF %EVAL(&__NHALMAINS > 13) %THEN %LET __hallimit = 4;
+  %IF %EVAL(&__NHALMAINS > 17) %THEN %LET __hallimit = 3;
+  %IF %EVAL(&__NHALMAINS > 28) %THEN %LET __hallimit = 2;
+  %IF %EVAL(&__NHALMAINS > 77) %THEN %LET __hallimit = 1;
+  %IF %EVAL(&__hallimit < &__NHALMAINS) %THEN %PUT WARNING: HAL - depth of maximum product term limited by SAS to &__hallimit - design matrix may not be completely saturated;;
+    	
+  * leverage glmmod for creating all possible interaction terms;
+  PROC GLMMOD DATA=fake OUTPARM=__halterms  NOPRINT NAMELEN=200;
+    MODEL &Y = &__halbar @&__hallimit / NOINT ;
+  PROC SQL NOPRINT;
+    SELECT STRIP(EFFNAME) INTO :__halterms SEPARATED BY " " 
+      FROM __halterms;
 	DROP TABLE fake;
   QUIT;
   DATA __halterms;
    SET __halterms END=EOF;
    IF eof THEN CALL SYMPUT("__nhalterms", PUT(_COLNUM_, 9.0));
   RUN;
-  DATA __halmains;
-   SET __halmains END=EOF;
-   IF eof THEN CALL SYMPUT("__nhalmains", PUT(_COLNUM_, 9.0));
-  RUN;  
   /*
     1. create indicator variables for I[i,j,m] = I(X[i,m] <= X[j,m]) for i = 1..N, j=1..N, m=1..P
   */
