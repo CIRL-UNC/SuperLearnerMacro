@@ -322,7 +322,7 @@ sup {
 <p>All sas macros to enable a learner in the library are of the form:</p>
 
 <div><pre><code class="language-none">%learner_in(Y,indata,outdata, binary_predictors,ordinal_predictors,nominal_predictors,
-continuous_predictors,weight,suff,seed);</code></pre></div>
+continuous_predictors,weight,id,suff,seed);</code></pre></div>
 
 <p>Using this standard call, it is relatively straightforward to add new learners, provided that the conventions are followed.
 Conventions:</p>
@@ -337,7 +337,7 @@ Conventions:</p>
 
 <p>Example: creating a learner that fits a generalized linear model with a log link and under a gamma error distribution</p>
 
-<div><pre><code class="language-none"> %MACRO custom_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,suff=,seed=);  
+<div><pre><code class="language-none"> %MACRO custom_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);  
   PROC GENMOD DATA = &amp;indata;
   %IF ((&amp;binary_predictors~=) OR (&amp;ordinal_predictors~=) OR (&amp;nominal_predictors~=)) %THEN CLASS &amp;binary_predictors &amp;ordinal_predictors &amp;nominal_predictors ;;
    MODEL &amp;Y = &amp;binary_predictors &amp;ordinal_predictors &amp;nominal_predictors &amp;continuous_predictors / LINK=LOG D=GAMMA;
