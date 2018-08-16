@@ -1,8 +1,8 @@
-%PUT super learner macro v1.0.4;
+%PUT super learner macro v1.0.5;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version: 1.0.4
+* Version: 1.0.5
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS (tested on sas 9.4 TS1M3)
@@ -111,7 +111,7 @@ This programs structure is:
                             lar (least angle regression - warning for binary outcome: does not respect [0,1] probability space)
                             lasso (LASSO)
                             lassob (LASSO with glmselect [use caution with binary variables] - may be appropriate for older sas versions)
-                            lassocv (LASSO with cross validated selection of shrinkage parameter)
+                            cvlasso (LASSO with cross validated selection of shrinkage parameter)
                             logit (main term logistic regression)
                             linreg (main term linear regression)
                             mars (multivariate adaptive regression splines)
@@ -130,7 +130,7 @@ This programs structure is:
                             **** note that lasso, rf and cart may require >= SAS 9.4 TS1M3 + optional high powered data mining procedures to work
   
                             ALSO includes multiple versions that include all first order interaction terms:
-                              backint, logitint, linregint, lassoint, lassobint, lassocvint, swiseint, larint, enetint, gamint, gamplint, marsint, probitint
+                              backint, logitint, linregint, lassoint, lassobint, cvlassoint, swiseint, larint, enetint, gamint, gamplint, marsint, probitint
                               
                             Included R functions (requires SAS/IML and RLANG system option enabled) allows a limited set of functions that call learners in the R programming language:
                               r_bagging:  Bootstrap aggregation of regression/classification trees (requires ipred, rpart packages)
@@ -508,7 +508,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
     OPTIONS QUOTELENMAX;
     *restrict to valid predictions (non missing);
     %IF %__TrueCheck(&checkvalid) %THEN %LET library = &validlib; 
-    %ELSE %LET droplib = none;
+    %ELSE %LET droplib=none;
     *final predictions from super-learner;
     %_SLPredict(indata=__sltm002_, outdata=&outdata, library=&library, incoef=&outslcoefs, inrisk=&outslrisks); 
     *write cross validated risk (loss function) to the log;
@@ -1301,8 +1301,7 @@ RUN;
 %MEND __IDENT;
 
 %MACRO __RENAMEDESIGN(VARS);
-  /* give library specific predictions standard variable names
-     to facilitate proc optmodel statements
+  /* rename all features
      - by necessity these are very short names "_#", which is needed to allow
        as many terms as will fit.
   */
@@ -1319,31 +1318,29 @@ RUN;
   %END;;
 %MEND __RENAMEDESIGN;
 
-%MACRO GetHALDesign(y, vars, indata, outdata, drop=TRUE);
+%MACRO GetHALDesign(y, vars, indata, outdata, drop=TRUE, intdepthlimit=0);
   /*
    steps to create design matrix for HAL (highly adaptive lasso):
     0. preprocessing
     1. create indicator variables for I[i,j,m] = I(X[i,m] <= X[j,m]) for i = 1..N, j=1..N, m=1..P
+      - this step is open to some optimization by checking for binary/nominal variables
     2. create all possible interactions of those indicators: e.g. I[i,j,m+1] = I[i,j,1]*I[i,j,2]
     3. remove duplicate columns from the design matrix
    *REQUIRED: training data should have non-missing Y, testing/validation data should have missing Y
     - this is satisfied by super learner macro defaults
-  */
-  /*
+
   to do:
-   1. Make more robust to variable naming (e.g. rename variables to v1,v2,v3, etc. in prelim step)
-   2. Current implementation is limited by maximum macro size - may need to refactor. The number of interaction terms 
-     is currently controlled by hard limits
+   1. Optimize selection of unique columns in design matrix (currently involves 2 expensive transpositions)
   */
-  %LOCAL haln halnt __hidx __halterms __nhalterms __halmains __nhalmains __HALBAR __hallimit;
+  %LOCAL haln halnt __hidx  __halmains __nhalmains __HALBAR __hallimit;
   /*
     0. preprocessing
   */
-  DATA __sltm0017_;
+  DATA __haltm0001_;
     SET &indata;
     %__RENAMEDESIGN(&vars);
-  PROC SQL NOPRINT; SELECT COUNT(%SCAN(&__slhalvars, 1)) INTO :haln FROM __sltm0017_; QUIT;
-  PROC SQL NOPRINT; SELECT COUNT(%SCAN(&__slhalvars, 1)) INTO :halnT FROM __sltm0017_(WHERE=(&Y>.z)); QUIT;
+  PROC SQL NOPRINT; SELECT COUNT(%SCAN(&__slhalvars, 1)) INTO :haln FROM __haltm0001_; QUIT;
+  PROC SQL NOPRINT; SELECT COUNT(%SCAN(&__slhalvars, 1)) INTO :halnT FROM __haltm0001_(WHERE=(&Y>.z)); QUIT;
   %LET __hidx = 1;
   %LET __halbar = %SCAN(&__slhalvars, &__hidx) ;
   %DO %WHILE(%SCAN(&__slhalvars, &__hidx+1)^=);
@@ -1351,7 +1348,7 @@ RUN;
     %LET __halbar = &__halbar | %SCAN(&__slhalvars, &__hidx);
   %END; 
   DATA fake;
-    SET __sltm0017_ (OBS=1);
+    SET __haltm0001_ (OBS=1);
 	WHERE &y>.z;
   * main terms only first;
   PROC GLMMOD DATA=fake OUTPARM=__halmains NOPRINT NAMELEN=200;
@@ -1363,34 +1360,44 @@ RUN;
    SET __halmains END=EOF;
    IF eof THEN CALL SYMPUT("__nhalmains", PUT(_COLNUM_, 9.0));
   RUN;  
-  * limiting the depth of interaction terms to allow for sas macro length limits;
-  %LET __hallimit = &__NHALMAINS;
-  %IF %EVAL(&__NHALMAINS > 11) %THEN %LET __hallimit = 6;
-  %IF %EVAL(&__NHALMAINS > 12) %THEN %LET __hallimit = 5;
-  %IF %EVAL(&__NHALMAINS > 13) %THEN %LET __hallimit = 4;
-  %IF %EVAL(&__NHALMAINS > 17) %THEN %LET __hallimit = 3;
-  %IF %EVAL(&__NHALMAINS > 28) %THEN %LET __hallimit = 2;
-  %IF %EVAL(&__NHALMAINS > 77) %THEN %LET __hallimit = 1;
-  %IF %EVAL(&__hallimit < &__NHALMAINS) %THEN %PUT WARNING: HAL - depth of maximum product term limited by SAS to &__hallimit - design matrix may not be completely saturated;;
-    	
+  * limiting the depth of interaction terms to speed up processing;
+  %IF &intdepthlimit ^=0 %THEN %LET __hallimit =  &intdepthlimit;
+  %ELSE %IF &intdepthlimit =0 %THEN %LET __hallimit = &__NHALMAINS;
+  %IF %EVAL(&__hallimit < &__NHALMAINS) %THEN %PUT NOTE: HAL - depth of maximum product term limited by user to &__hallimit - design matrix may not be completely saturated;;
   * leverage glmmod for creating all possible interaction terms;
   PROC GLMMOD DATA=fake OUTPARM=__halterms  NOPRINT NAMELEN=200;
     MODEL &Y = &__halbar @&__hallimit / NOINT ;
-  PROC SQL NOPRINT;
-    SELECT STRIP(EFFNAME) INTO :__halterms SEPARATED BY " " 
-      FROM __halterms;
-	DROP TABLE fake;
-  QUIT;
   DATA __halterms;
    SET __halterms END=EOF;
    IF eof THEN CALL SYMPUT("__nhalterms", PUT(_COLNUM_, 9.0));
   RUN;
-  /*
-    1. create indicator variables for I[i,j,m] = I(X[i,m] <= X[j,m]) for i = 1..N, j=1..N, m=1..P
-  */
+  *storing terms in file as code to get around macro length limit;
+  FILENAME terms TEMP;
+  DATA _NULL_;
+    FILE terms;
+    IF _N_=1 THEN DO;
+	  PUT "*begin creation of full design matrix;";
+      PUT "DO n = 1 TO %TRIM(&halnt);";
+	END;
+    SET __halterms END=eof;
+	effname = STRIP(effname);
+    t = 1;
+	PUT '  __Hi[' _N_ ',n] = 1' @@;
+	DO WHILE(SCAN(effname, t, '*')^='');
+	  nm = STRIP(SCAN(effname, t, '*'));
+      PUT '*(' nm ">= _" nm +(-1)'_[n])' @@;
+      t=t+1;
+	END;
+	PUT ';';
+    IF EOF THEN DO;
+      PUT 'END;';
+	  PUT '*end creation of full design matrix;';
+	END;
+  RUN;
+  /*1. create indicator variables for I[i,j,m] = I(X[i,m] <= X[j,m]) for i = 1..N, j=1..N, m=1..P*/
   DATA __halmat;
 	*this step should be done only in the training data!;
-    SET __sltm0017_;
+    SET __haltm0001_;
     WHERE &y > .z; 
     %LET __hidx = 1;
     %DO %WHILE(%SCAN(&__slhalvars, &__hidx, ' ')^=);
@@ -1410,13 +1417,15 @@ RUN;
     %END;
     IF _n_ = &halnt THEN OUTPUT;  
   RUN;
+  /*2. create all possible interactions of those indicators: e.g. I[i,j,m+1] = I[i,j,1]*I[i,j,2]*/
   /*
-      2. create all possible interactions of those indicators: e.g. I[i,j,m+1] = I[i,j,1]*I[i,j,2]
+  note: some speedup could be obtained by keeping (as main term) unmodified, all binary variables
   */
-  DATA __designdup(KEEP = __fakey __hi:) __designraw(DROP =  __fakey __hi:);
+  DATA __designdup(KEEP = __fakey __hi:);
+  /* main computational slowdown */
     __fakey = 1;
     ARRAY __Hi[&__nhalterms, &halnt] ;
-    SET __sltm0017_;
+    SET __haltm0001_;
     IF _n_=1 THEN SET __halmat;
     %LET __hidx = 1;
     %DO %WHILE(%SCAN(&__slhalvars, &__hidx, ' ')^=);
@@ -1424,20 +1433,7 @@ RUN;
       ARRAY _&__x._[&halnt] ;
       %LET __hidx = %EVAL(&__hidx+1);
     %END;
-    %LET __hidx = 1;
-	DO n = 1 TO &halnt;
-      %DO %WHILE(%EVAL(&__hidx <= &__nhalterms));
-        %LET __xi = %TRIM(%SCAN(&__halterms, &__hidx, ' '));
-	      %LET __aidx = 1;
-		  %LET term = 1;
-          %DO %WHILE(%SCAN(&__xi, &__aidx, '*')^=);
-            %LET term = &term * (%SCAN(&__xi, &__aidx, '*') >= _%SCAN(&__xi, &__aidx, '*')_[n]);
-            %LET __Aidx = %EVAL(&__aidx+1);
-		  %END;
-		  __Hi[&__hidx, n] = &term;
-        %LET __hidx = %EVAL(&__hidx+1);
-      %END; 
-	END;
+    %INCLUDE terms;
   RUN;
   /*
   3. remove duplicate columns from the design matrix;
@@ -1445,7 +1441,7 @@ RUN;
   PROC TRANSPOSE DATA = __designdup OUT=__designdup(DROP=_NAME_); 
   PROC SQL NOPRINT;
     CREATE TABLE &outdata AS SELECT DISTINCT * FROM __designdup;
-    %IF &DROP=TRUE %THEN DROP TABLE __designdup, __halmat, __designraw, __halmains, __halterms, __sltm0017_;;
+    %IF &DROP=TRUE %THEN DROP TABLE __designdup, __halmat, __halmains, __halterms, __haltm0001_;;
   QUIT;
   PROC TRANSPOSE DATA = &outdata OUT=&outdata(DROP=_NAME_) PREFIX=__hal_;
   RUN; QUIT; RUN;
@@ -1484,7 +1480,7 @@ RUN;
    Learner=SUBSTR(Learner, 10);
    IF Learner= '' THEN Learner = "Super learner (not cross-validated)";
   RUN;
-  %IF %__FalseCheck(&checkvalid) %THEN %LET droplib = none;
+  %IF %__FalseCheck(&checkvalid) %THEN %LET droplib=none;
   OPTIONS MERGENOBY=WARN;
   %IF %STR(&indata) = %STR(&preddata) %THEN %LET preddata=;
   OPTIONS LINESIZE = 109 PAGESIZE=80; *rudely set line size to my default;
@@ -1877,7 +1873,7 @@ RUN;
     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors / SPLIT;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y(EVENT='1') = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / DIST=BINARY LINK=LOGIT;
-    SELECTION METHOD=lasso(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=lasso(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA p = p_lasso&SUFF; 
     ID _ALL_;
   RUN;;
@@ -1895,7 +1891,7 @@ RUN;
     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors / SPLIT;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y(EVENT='1') = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / DIST=BINARY LINK=LOGIT;
-    SELECTION METHOD=BACKWARD(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=BACKWARD(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA p = p_back&SUFF; 
     ID _ALL_;
   RUN;;
@@ -1913,7 +1909,7 @@ RUN;
     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors / SPLIT;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y(EVENT='1') = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms / DIST=BINARY LINK=LOGIT;
-    SELECTION METHOD=BACKWARD(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=BACKWARD(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA p = p_backINT&SUFF; 
     ID _ALL_;
   RUN;;
@@ -1948,7 +1944,7 @@ RUN;
     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors / SPLIT;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y(EVENT='1') = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / DIST=BINARY LINK=LOGIT;
-    SELECTION METHOD=STEPWISE(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=STEPWISE(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA p = p_swise&SUFF; 
     ID _ALL_;
   RUN;;
@@ -1960,7 +1956,7 @@ RUN;
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Logit model with LASSO - including interaction terms */
-  PROC HPGENSELECT DATA=&indata  TECH=QUANEW; 
+  PROC HPGENSELECT DATA=&indata  TECH=QUANEW NOSTDERR LASSORHO=0.8 LASSOSTEPS=100; 
     FORMAT &Y;
     ODS SELECT NONE;
     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors / SPLIT;;
@@ -1984,7 +1980,7 @@ RUN;
     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors / SPLIT;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y(EVENT='1') = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors  &SLIXterms/ DIST=BINARY LINK=LOGIT;
-    SELECTION METHOD=STEPWISE(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=STEPWISE(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA p = p_swiseint&SUFF; 
     ID _ALL_;
   RUN;;
@@ -2014,13 +2010,13 @@ RUN;
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* LASSO model, continuous */
-  PROC HPGENSELECT DATA=&indata TECH=QUANEW NOSTDERR NORMALIZE=YES;
+  PROC HPGENSELECT DATA=&indata TECH=QUANEW NOSTDERR LASSORHO=0.8 LASSOSTEPS=100 NORMALIZE=YES;
     FORMAT &Y;
     ODS SELECT NONE;
     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors / SPLIT;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / DIST=NORMAL LINK=IDENTITY;
-    SELECTION METHOD=lasso(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=lasso(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA p = p_lasso&SUFF; 
     ID _ALL_;
   RUN;;
@@ -2038,7 +2034,7 @@ RUN;
     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors / SPLIT;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / DIST=NORMAL LINK=IDENTITY;
-    SELECTION METHOD=BACKWARD(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=BACKWARD(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA p = p_back&SUFF; 
     ID _ALL_;
   RUN;;
@@ -2056,7 +2052,7 @@ RUN;
     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors / SPLIT;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms / DIST=NORMAL LINK=IDENTITY;
-    SELECTION METHOD=BACKWARD(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=BACKWARD(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA p = p_backint&SUFF; 
     ID _ALL_;
   RUN;;
@@ -2074,7 +2070,7 @@ RUN;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / 
-    SELECTION=LASSO;
+    SELECTION=LASSO(CHOOSE=AICC STEPS=100);
     OUTPUT OUT = &OUTDATA PRED=p_lassob&SUFF;
   RUN;
 
@@ -2164,7 +2160,7 @@ RUN;
     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors / SPLIT;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms/ DIST=NORMAL LINK=IDENTITY;
-    SELECTION METHOD=lasso(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=lasso(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA p = p_lassoint&SUFF; 
     ID _ALL_;
   RUN;;
@@ -2182,12 +2178,12 @@ RUN;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors  &SLIXterms/ 
-    SELECTION=LASSO;
+    SELECTION=LASSO(CHOOSE=AICC STEPS=100);
     OUTPUT OUT = &OUTDATA PRED=p_lassointb&SUFF;
   RUN;
 %MEND lassointb_cn;
 
-%MACRO lassocv_cn(
+%MACRO cvlasso_cn(
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
@@ -2199,11 +2195,11 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / 
     SELECTION=LASSO(CHOOSE=CVEX STOP=NONE);
-    OUTPUT OUT =&outdata(DROP=_CVINDEX:) PRED=p_lassocv&SUFF;
+    OUTPUT OUT =&outdata(DROP=_CVINDEX:) PRED=p_cvlasso&SUFF;
   RUN;
-%MEND lassocv_cn;
+%MEND cvlasso_cn;
 
-%MACRO lassocvint_cn(
+%MACRO cvlassoint_cn(
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
@@ -2215,27 +2211,27 @@ RUN;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms/ 
     SELECTION=LASSO(CHOOSE=CVEX STOP=NONE);
-    OUTPUT OUT =&outdata(DROP=_CVINDEX:) PRED=p_lassocvint&SUFF;
+    OUTPUT OUT =&outdata(DROP=_CVINDEX:) PRED=p_cvlassoint&SUFF;
   RUN;
-%MEND lassocvint_cn;
+%MEND cvlassoint_cn;
 
-%MACRO lassocv_in(
+%MACRO cvlasso_in(
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* LASSO model, selection by cross validation (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
-  %lassocv_cn(Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,
+  %cvlasso_cn(Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,
                nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight, suff=&suff, seed=&seed);
-%MEND lassocv_in;
+%MEND cvlasso_in;
 
-%MACRO lassocvint_in(
+%MACRO cvlassoint_in(
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* LASSO model, selection by cross validation (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */  
-  %lassocvint_cn(Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,
+  %cvlassoint_cn(Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,
                nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight ,suff=&suff, seed=&seed);
-%MEND lassocvint_in;
+%MEND cvlassoint_in;
 
 %MACRO lar_in(
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
@@ -3397,7 +3393,7 @@ RUN;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors ;
-    SELECTION METHOD=LASSO(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=LASSO(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA PRED=p_hplasso&SUFF;
   RUN;
 %MEND hplasso_cn;
@@ -3415,7 +3411,7 @@ RUN;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms; 
-    SELECTION METHOD=LASSO(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=LASSO(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA PRED=p_hplassoint&SUFF;
   RUN;
 %MEND hplassoint_cn;
@@ -3433,7 +3429,7 @@ RUN;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors ;
-    SELECTION METHOD=LAR(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=LAR(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA PRED=p_hplar&SUFF;
   RUN;
 %MEND hpLAR_cn;
@@ -3451,7 +3447,7 @@ RUN;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms; 
-    SELECTION METHOD=LAR(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=LAR(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA PRED=p_hplarint&SUFF;
   RUN;
 %MEND hplarint_cn;
@@ -3468,7 +3464,7 @@ RUN;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors ;
-    SELECTION METHOD=LASSO(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=LASSO(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA PRED=p_hplasso&SUFF;
   RUN;
 %MEND hplasso_in;
@@ -3486,7 +3482,7 @@ RUN;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms; 
-    SELECTION METHOD=LASSO(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=LASSO(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA PRED=p_hplassoint&SUFF;
   RUN;
 %MEND hplassoint_in;
@@ -3504,7 +3500,7 @@ RUN;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors ;
-    SELECTION METHOD=LAR(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=LAR(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA PRED=p_hplar&SUFF;
   RUN;
 %MEND hpLAR_in;
@@ -3522,7 +3518,7 @@ RUN;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms; 
-    SELECTION METHOD=LAR(CHOOSE=BIC STOP=BIC);
+    SELECTION METHOD=LAR(CHOOSE=AICC STOP=AICC);
     OUTPUT OUT = &OUTDATA PRED=p_hplarint&SUFF;
   RUN;
 %MEND hpLARint_in;
@@ -3566,7 +3562,7 @@ RUN;
 );
   /* Highly adaptive LASSO model, selection by cross validation, minimizing CV residual sum of squares */
   %GetHALDesign(y=&y, vars=&binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors , 
-                indata=&indata, outdata=__sltm0017_, drop=FALSE);
+                indata=&indata, outdata=__sltm0017_, drop=TRUE, intdepthlimit=0);
   OPTIONS MERGENOBY=NOWARN;
   DATA __sltm0016_;
    MERGE &indata(KEEP=&Y &weight) __sltm0017_;
@@ -3588,11 +3584,98 @@ RUN;
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
+  %__SLwarning(%str(HAL does not resepect the 0/1 probability space and should be used with extreme caution (Try using the 'ahal' learner)));
   /* Highly adaptive LASSO model, selection by cross validation, minimizing CV residual sum of squares 
      (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
   %hal_cn(Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,
                nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight, suff=&suff, seed=&seed);
 %MEND hal_in;
+
+%MACRO ahal_cn(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+);
+  /*APPROXIMATE Highly adaptive LASSO model, selection by AICC, HPGENSELECT */
+  %GetHALDesign(y=&y, vars=&binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors , 
+                indata=&indata, outdata=__sltm0017_, drop=TRUE, intdepthlimit=0);
+  OPTIONS MERGENOBY=NOWARN;
+  DATA __sltm0016_;
+   MERGE &indata(KEEP=&Y &weight) __sltm0017_;
+  RUN;
+  PROC HPGENSELECT DATA=__sltm0016_ TECH=QUANEW NOSTDERR LASSORHO=0.8 LASSOSTEPS=100 NORMALIZE=YES;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y = __hal_: / DIST=GAUSSIAN LINK=ID;
+    SELECTION METHOD=lasso(CHOOSE=AICC STOP=AICC);
+    OUTPUT OUT = __sltm0016_(KEEP=p_ahal&SUFF) p = p_ahal&SUFF; 
+  RUN;;
+  DATA &outdata;
+   MERGE &indata __sltm0016_;
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+%MEND ahal_cn;
+
+%MACRO ahal_in(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+);
+  /*APPROXIMATE Highly adaptive LASSO model, selection by AICC, HPGENSELECT*/
+  %GetHALDesign(y=&y, vars=&binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors , 
+                indata=&indata, outdata=__sltm0017_, drop=TRUE, intdepthlimit=0);
+  OPTIONS MERGENOBY=NOWARN;
+  DATA __sltm0016_;
+   MERGE &indata(KEEP=&Y &weight) __sltm0017_;
+  RUN;
+  PROC HPGENSELECT DATA=__sltm0016_ TECH=QUANEW NOSTDERR LASSORHO=0.8 LASSOSTEPS=100 NORMALIZE=YES;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y(EVENT='1') = __hal_: / DIST=BINOMIAL LINK=LOGIT;
+    SELECTION METHOD=lasso(CHOOSE=AICC STOP=AICC);
+    OUTPUT OUT = __sltm0016_(KEEP=p_ahal&SUFF) p = p_ahal&SUFF; 
+  RUN;;
+  DATA &outdata;
+   MERGE &indata __sltm0016_;
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+%MEND ahal_in;
+
+%MACRO ahalb_cn(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, suff=, seed=
+);
+  /*APPROXIMATE Highly adaptive LASSO model, selection by cross validation over non-exhaustive list of possible lasso parameters*/
+  %GetHALDesign(y=&y, vars=&binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors , 
+                indata=&indata, outdata=__sltm0017_, drop=FALSE);
+  OPTIONS MERGENOBY=NOWARN;
+  DATA __sltm0016_;
+   MERGE &indata(KEEP=&Y &weight) __sltm0017_;
+  RUN;
+  PROC GLMSELECT DATA = __sltm0016_ NOPRINT SEED=&seed;
+    FORMAT &Y;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    ODS SELECT NONE;
+    MODEL &Y = __hal_: / SELECTION=LASSO(CHOOSE=CVEX STEPS=100)  CVMETHOD=RANDOM(10);
+    OUTPUT OUT =__sltm0016_(KEEP=p_ahalb&SUFF) PRED=p_ahalb&SUFF;
+  RUN;
+  DATA &outdata;
+   MERGE &indata __sltm0016_;
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+%MEND ahalb_cn;
+
+%MACRO ahalb_in(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+);
+  %__SLwarning(%str(aHALb does not resepect the 0/1 probability space and should be used with extreme caution (Try using the 'ahal' learner)));
+  /*APPROXIMATE Highly adaptive LASSO model, selection by cross validation over non-exhaustive list of possible lasso parameters
+     (NOTE THIS DOES NOT RESPECT THE 0,1 PARAMETER SPACE FOR A CLASSIFICATION PROBLEM!) */
+  %ahalb_cn(Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,
+               nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight, suff=&suff, seed=&seed);
+%MEND ahalb_in;
+
 
 /********************************************************;
 * Part 2: learner functions that call R;
@@ -6127,6 +6210,6 @@ OPTIONS NOMPRINT;
 * MINOR UPDATES
 * 13-AUG-2018 Bug with BLASSO, BRIDGE methods (hard coded outcome value). 
               Added nominal support for clustering (only in CV selection).
-              Minor change with lassocv, lassocvint learners
+              Minor change with cvlasso, cvlassoint learners
               Added highly adaptive lasso learner (Experimental)
 **********************************************************************************************************************/

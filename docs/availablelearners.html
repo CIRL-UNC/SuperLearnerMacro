@@ -325,7 +325,7 @@ sup {
 <p><strong>learner</strong>: description (SAS procedure)</p>
 
 <ul>
-<li><strong>back</strong>: backward selection by BIC (HPGENSELECT)</li>
+<li><strong>back</strong>: backward selection by AICC (HPGENSELECT)</li>
 <li>*<strong>bagging</strong>: bootstrap aggregation of regression/classification trees (ARBOR)</li>
 <li>*<strong>bayesnet</strong>: Bayesian network [binary only] (HPBNET)</li>
 <li><strong>boxcox</strong>: Box-Cox transformation of target variables, positively bound continuous Y only (TRANSREG)</li>
@@ -337,6 +337,9 @@ sup {
 <li><strong>gam</strong>: generalized additive model with 3 df splines on all continuous variables (GAM)</li>
 <li><strong>gampl</strong>: faster generalized additive model with 3 df splines on all continuous variables (GAMPL)</li>
 <li><strong>glm</strong>: linear or logistic regression: slower wrappers for logit and linreg (GENMOD/REG)</li>
+<li><strong>hal</strong>: highly adaptive LASSO - uses non-parametric representation of data using indicator basis functions, selects LASSO parameter via 10-fold cross validation with exhaustive search - warning for binary outcome: does not respect [0,1] probability space (GLMSELECT)</li>
+<li><strong>ahal</strong>: approximate (faster) highly adaptive LASSO - uses non-parametric representation of data using indicator basis functions, selects LASSO parameter via minimum AICC across models using a range of 100 possible LASSO parameter values (HPGENSELECT)</li>
+<li><strong>ahalb</strong>:  approximate (faster) highly adaptive LASSO, version 2 - uses non-parametric representation of data using indicator basis functions, selects LASSO parameter via 10-fold cross validation from a range of 100 possible LASSO parameter values (similar to the R function &lsquo;hal&rsquo;) - warning for binary outcome: does not respect [0,1] probability space (GLMSELECT)</li>
 <li><strong>knn</strong>: [bernoulli only] k-nearest neighbors classification (DISCRIM)</li>
 <li><strong>hpglm</strong>: main term logistic/linear regression with multithreading (HPLOGISTIC/HPREG)</li>
 <li><strong>hplar</strong>: least angle regression with multithreading - warning for binary outcome: does not respect [0,1] probability space (HPREG)</li>
@@ -345,7 +348,7 @@ sup {
 <li><strong>lar</strong>: least angle regression - warning for binary outcome: does not respect [0,1] probability space (GLMSELECT)</li>
 <li><strong>lasso</strong>: least absolute shrinkage and selection operator with multithreading (HPGENSELECT)</li>
 <li><strong>lassob</strong>: LASSO with glmselect [use caution with binary variables] - may be appropriate for older sas versions (GLMSELECT)</li>
-<li><strong>lassocv</strong>: LASSO with cross-validated selection of shrinkage parameter [use caution with binary variables] - (GLMSELECT)</li>
+<li><strong>cvlasso</strong>: LASSO with cross-validated selection of shrinkage parameter  - warning for binary outcome: does not respect [0,1] probability space (GLMSELECT)</li>
 <li><strong>logit</strong>: main term logistic regression (GENMOD)</li>
 <li><strong>linreg</strong>: main term linear regression (REG)</li>
 <li><strong>mars</strong>: multivariate adaptive regression splines (ADAPTIVEREG)</li>
@@ -365,7 +368,7 @@ sup {
 
 <p>Also includes multiple learners that are identical to other learners but include all first order interaction terms:</p>
 
-<p><strong>backint</strong>, <strong>logitint</strong>, <strong>linregint</strong>, <strong>lassoint</strong>, <strong>lassobint</strong>, <strong>lassocvint</strong>, <strong>swiseint</strong>, <strong>larint</strong>, <strong>enetint</strong>, <strong>gamint</strong>, <strong>gamplint</strong>, <strong>marsint</strong>, <strong>probitint</strong>, <strong>hpglmint</strong>, <strong>hplarint</strong></p></li>
+<p><strong>backint</strong>, <strong>logitint</strong>, <strong>linregint</strong>, <strong>lassoint</strong>, <strong>lassobint</strong>, <strong>cvlassoint</strong>, <strong>swiseint</strong>, <strong>larint</strong>, <strong>enetint</strong>, <strong>gamint</strong>, <strong>gamplint</strong>, <strong>marsint</strong>, <strong>probitint</strong>, <strong>hpglmint</strong>, <strong>hplarint</strong></p></li>
 <li><h4 id="toc_3">Learners based on R functions</h4>
 
 <p>A number of included R functions (requires SAS/IML and RLANG system option enabled (<a href="http://documentation.sas.com/?docsetId=imlug&amp;docsetTarget=imlug_r_sect003.htm&amp;docsetVersion=14.3&amp;locale=en">see here</a>) allow a limited set of learners in the R programming language. Provided that R is installed and the RLANG option properly enabled, the required packages will be automatically installed the first time the learner is called (if running the SuperLearner or CVSuperLearner macros (internet connection must be active)). In most cases, the default parameterization of each of these learners is identical to the parameterization given in the SuperLearner package in R, so using them with the %SuperLearner macro should give similar results to using them in R. NOTE: R learners are case sensitive, unlike SAS, so specification of Y and predictor variable names must have correct case.</p>
