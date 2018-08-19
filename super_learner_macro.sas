@@ -1,8 +1,8 @@
-%PUT super learner macro v1.0.5;
+%PUT super learner macro v1.0.6;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version: 1.0.5
+* Version: 1.0.6
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS (tested on sas 9.4 TS1M3)
@@ -1421,10 +1421,10 @@ RUN;
   /*
   note: some speedup could be obtained by keeping (as main term) unmodified, all binary variables
   */
-  DATA __designdup(KEEP = __fakey __hi:);
+  DATA __designdupa(KEEP = __hi:);
   /* main computational slowdown */
-    __fakey = 1;
     ARRAY __Hi[&__nhalterms, &halnt] ;
+    LENGTH __Hi: 3;
     SET __haltm0001_;
     IF _n_=1 THEN SET __halmat;
     %LET __hidx = 1;
@@ -1438,8 +1438,9 @@ RUN;
   /*
   3. remove duplicate columns from the design matrix;
   */
-  PROC TRANSPOSE DATA = __designdup OUT=__designdup(DROP=_NAME_); 
+  PROC TRANSPOSE DATA = __designdupa OUT=__designdup(DROP=_NAME_); 
   PROC SQL NOPRINT;
+    DROP TABLE __designdupa;
     CREATE TABLE &outdata AS SELECT DISTINCT * FROM __designdup;
     %IF &DROP=TRUE %THEN DROP TABLE __designdup, __halmat, __halmains, __halterms, __haltm0001_;;
   QUIT;
