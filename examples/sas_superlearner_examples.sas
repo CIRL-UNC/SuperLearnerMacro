@@ -52,7 +52,7 @@ Example 0: basic usage to predict a continuous outcome
                 x= x l c c2,
                 indata=a, 
                 outdata=sl_testdata,
-                library= glm lassocv gampl swise,
+                library= lasso rf cart,
                 folds=5, 
                 method=NNLS, 
                 dist=GAUSSIAN 
@@ -150,7 +150,7 @@ Example 2: predicted continuous outcomes under an intervention
 
 
 /**********************************************************************************************************************
-Example 3: creating a new learner (gamma regression)
+Example 3a: creating a new learner (gamma regression)
 **********************************************************************************************************************/
 
   /* template for adding in a custom learner*/
@@ -195,6 +195,92 @@ Example 3: creating a new learner (gamma regression)
                 outdata=sl_testdata,
                 library= linreg custom gampl, /* note how new learner is used*/
                 folds=5, 
+                method=CCLS, 
+                dist=GAUSSIAN
+  );
+  PROC MEANS DATA = sl_testdata FW=5;
+   TITLE 'Predicted outcomes';
+   VAR p_:  y;
+  RUN;
+
+
+/**********************************************************************************************************************
+Example 3b: creating a new learner (CART with different tuning parameters)
+**********************************************************************************************************************/
+
+  /* template for adding in a custom learner*/
+  *0) simulate data, including 5-fold cross validation sets;
+  DATA A ;
+  LENGTH id x l 3;
+  CALL STREAMINIT(1192887);
+  *observed data;
+   DO id = 1 TO 300;
+    py0_true = 10+RAND("uniform")*0.1 + 0.4;  
+    l = RAND("bernoulli", 1/(1+exp(-1 + py0_true)));
+    c = RAND("normal", py0_true, 1);
+    c2 = RAND("normal", py0_true, .3);
+    x = RAND("bernoulli", 1/(1+exp(-0.5 + 2*l + (c-10) + (c2-10))));
+    py = py0_true + 1*(x); *true risk difference per unit exposure;
+    py1_true = py0_true + 1;
+    meandiff_true = 1;
+    y = RAND("NORMAL", py, 1);
+    OUTPUT;
+   END;
+  RUN;
+  
+  
+  *adding in a custom learner (custom_cn for 'continuous' and custom_in for 'binary');
+  * example: regression tree with only 4 OR 8 leaves/terminal nodes;
+ %MACRO cart4_cn(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+);
+  /* regression tree, no cross validation */
+  
+  &suppresswarn %__SLwarning(%str(This function (CART) is untested below SAS 9.4 TS1M3));
+  PROC HPSPLIT DATA = &indata SEED=&seed  CVMETHOD=NONE ;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    TARGET &Y / LEVEL = interval;
+    %IF (&ordinal_predictors~=) OR (&binary_predictors~=) OR (&nominal_predictors~=) %THEN 
+         INPUT &binary_predictors &ordinal_predictors &nominal_predictors / LEVEL = nominal;;
+    %IF (&continuous_predictors~=) %THEN 
+          INPUT &continuous_predictors / LEVEL = interval;;
+    ID _ALL_;
+	PRUNE CC (LEAVES=4);
+    OUTPUT out=&outdata (drop =  _node_ _leaf_ RENAME=(p_&Y = p_cart4&SUFF));
+  RUN;
+%MEND cart4_cn;
+ %MACRO cart8_cn(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+);
+  /* regression tree, no cross validation */
+  
+  &suppresswarn %__SLwarning(%str(This function (CART) is untested below SAS 9.4 TS1M3));
+  PROC HPSPLIT DATA = &indata SEED=&seed  CVMETHOD=NONE ;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    TARGET &Y / LEVEL = interval;
+    %IF (&ordinal_predictors~=) OR (&binary_predictors~=) OR (&nominal_predictors~=) %THEN 
+         INPUT &binary_predictors &ordinal_predictors &nominal_predictors / LEVEL = nominal;;
+    %IF (&continuous_predictors~=) %THEN 
+          INPUT &continuous_predictors / LEVEL = interval;;
+    ID _ALL_;
+	PRUNE CC (LEAVES=8);
+    OUTPUT out=&outdata (drop =  _node_ _leaf_ RENAME=(p_&Y = p_cart8&SUFF));
+  RUN;
+%MEND cart8_cn;
+  
+  %SuperLearner(Y=y,
+                binary_predictors= x l,
+                continuous_predictors=c c2,
+                indata=a, 
+                outdata=sl_testdata,
+                library= linreg gampl cart cart4 cart8, /* note how new learner is used*/
+                folds=10, 
                 method=CCLS, 
                 dist=GAUSSIAN
   );

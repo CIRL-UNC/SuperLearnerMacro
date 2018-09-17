@@ -5,11 +5,16 @@
 * Version: 1.0.6
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
-   and machine learning functions in SAS (tested on sas 9.4 TS1M3)
+   and machine learning functions in SAS 
 * Requirements:
     Base SAS 9.X (subversion X varies depending on learners used, 9.4+ recommended)
-    SAS/OR
+    SAS/OR (14.1+ recommended)
     SAS/STAT (14.1+ recommended)
+* Tested on: 
+  OS: Windows 8.1 
+  Base SAS: 9.4_TS1M3, 9.4_TS1M5
+  SAS Analytics: 14.1, 14.3
+  R: 3.30
 * Highly recommended:
     SAS Enterprise Miner High Performance Procedures (required for many learners)
 * Optional for enhancement:
