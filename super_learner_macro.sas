@@ -1,8 +1,8 @@
-%PUT super learner macro v1.1.0;
+%PUT super learner macro v1.1.1;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version: 1.1.0
+* Version: 1.1.1
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS 
@@ -1150,7 +1150,8 @@ RUN;
      %IF %SUBSTR(&book, 1,2)=r_ %THEN %DO;
        %IF &rinst=FALSE %THEN %DO;
           %__SLwarning(%str(Please note that R learners are case sensitive, so check the case of your variable names if you get strange errors from PROC IML/R.));
-          %__SLnote(%str(R needs to be installed and Rlang system option must be enabled in SAS. See http://documentation.sas.com/?docsetId=imlug&docsetTarget=imlug_r_sect003.htm&docsetVersion=14.3&locale=en for details.));
+          *need to use explicit quotes in the following or get warnings about unresolved symbolic references;
+          %__SLnote(%nrstr('R needs to be installed and Rlang system option must be enabled in SAS. See http://documentation.sas.com/?docsetId=imlug&docsetTarget=imlug_r_sect003.htm&docsetVersion=14.3&locale=en for details.'));
        %END;
        %LET rinst=TRUE;
        %LET _pkg = &package;
@@ -5523,10 +5524,10 @@ RUN;
     %IF &weight^= %THEN %LET wt= &weight *;;
     ODS EXCLUDE ALL; ODS NORESULTS;
     PROC HPNLMOD DATA=__sltm004_  ABSGCONV=1E-16 
-      %IF %__TrueCheck(&verbose) %THEN TITLE "HPNLMOD procedure: SL coefficient estimation";;
       %IF (&method IN( BNNLOGLIK BCCLOGLIK BLOGLIK BNNLS BCCLS BOLS BNNRIDGE BCCRIDGE BRIDGE BNNLASSO BCCLASSO BLASSO BNNLAE BCCLAE BLAE )) %THEN TECH=QUANEW; 
       %ELSE %IF (&method IN( BNNLOGLIK )) %THEN TECH=TRUREG;  
       %ELSE /*TECH=LEVMAR*/;;
+      %IF %__TrueCheck(&verbose) %THEN TITLE "HPNLMOD procedure: SL coefficient estimation";;
       PARMS 
         %LET l_l = 1; 
         %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); __slcoef_&l_l =%SYSEVALF(1/&LIBCOUNT)  %LET l_l = %EVAL(&l_l +1); %END;;
@@ -5580,10 +5581,9 @@ RUN;
          dummy=0;
         MODEL dummy ~ GENERAL(-&WT f - pen);
       %END;
-      % IF (&method IN(BNNLAE BCCLAE BLAE)) %THEN %DO;
+      %IF (&method IN(BNNLAE BCCLAE BLAE)) %THEN %DO;
          *least absolute error methods: useful for targeting median of predictive distribution;
          *NOTE: BNNLAE seems to be failing due to ridging errors;
-         %IF (&method IN(BNNLAE)) %THEN %__SLWarning(%STR(BNNLAE often fails due to ridging errors. Try NNLAE or BCCLAE if this occurs.));
         %LET l_l = 1;
         f =  ABS(&y-( 0
           %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); + __slcoef_&l_l * __v&l_l  %LET l_l = %EVAL(&l_l +1); %END;
