@@ -1,8 +1,8 @@
-%PUT super learner macro v1.0.6;
+%PUT super learner macro v1.1.0;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version: 1.0.6
+* Version: 1.1.0
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS 
@@ -494,10 +494,15 @@ _main: the absolute barebones super learner macro (not to be called on its own)
   %MACRO _main(indata, y, id, folds, insample, preddata, library, risk, method, dist, outdata, outslcoefs, outslrisks);
     * the bulk of the superlearner functions go in here;
     %GLOBAL SLSampSize;
-    PROC SQL NOPRINT; SELECT COUNT(&Y) into :SLSampSize from &indata  ;quit;
+    %IF &id = %THEN %DO; 
+      PROC SQL NOPRINT; SELECT COUNT(&Y) into :SLSampSize from &indata  ;quit;
+    %END;
+    %IF &id ^= %THEN %DO; 
+      PROC SQL NOPRINT; SELECT COUNT(UNIQUE &ID) into :SLSampSize from &indata  ;quit;
+    %END;
     *create AUC methods;
     %IF &method=AUC %THEN %_mkmethods();;
-    %__SLnote(total observations in training data: %TRIM(&SLSampSize).);
+    %__SLnote(total observations/IDs in training data: %TRIM(&SLSampSize).);
     *cross validation estimation of superlearner coefficients for prediction;
     %__SLnote(Using cross validation with &folds fold);
     %__SLnote(Approximately %EVAL(&SLSampSize/&folds) per fold);
@@ -739,6 +744,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
 ********************************************************;
 %MACRO _mkmethods();
   %LOCAL ncutoffs;
+  /* note: allowing for IDs completely broke AUC methods */
   %LET ncutoffs = 500; * number of cutoff points for approximate AUC calculation;
   PROC FCMP OUTLIB = work.__funcs.LOGFUNCS;
   FUNCTION AUC(coef[*], label[*], preds[*,*]) VARARGS;
@@ -773,6 +779,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
   ENDSUB;
   FUNCTION AUCL(idx, coef[*], label[*], preds[*,*]) VARARGS;
     * stupid trick to please proc optmodel ;
+  /* note: allowing for IDs completely broke AUC methods */
     ARRAY __slp[&slsampsize] / NOSYMBOLS;
     ARRAY ncoef[1] / NOSYMBOLS;
     DO i = 1 TO DIM(coef);
@@ -3564,7 +3571,7 @@ RUN;
 
 %MACRO hal_cn(
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=, weight=, suff=, seed=
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Highly adaptive LASSO model, selection by cross validation, minimizing CV residual sum of squares */
   %GetHALDesign(y=&y, vars=&binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors , 
@@ -3649,7 +3656,7 @@ RUN;
 
 %MACRO ahalb_cn(
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=, weight=, suff=, seed=
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /*APPROXIMATE Highly adaptive LASSO model, selection by cross validation over non-exhaustive list of possible lasso parameters*/
   %GetHALDesign(y=&y, vars=&binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors , 
@@ -4956,10 +4963,10 @@ RUN;
   %IF %__TrueCheck(&shuffle) %THEN %DO;
     PROC SQL NOPRINT;
      CREATE TABLE &outdata(DROP=__rnS) AS SELECT *, RANUNI(&SLseed) AS __rnS FROM __sltm005_ ORDER BY __rnS;QUIT;
-    /* TODO - allow sort of clusters identified by 'id' */
     %IF &ID ^= %THEN %DO;
+    /* caution: untested */
      PROC SQL NOPRINT;
-      CREATE TABLE &outdata(DROP=__rnS) AS SELECT *, RANUNI(&SLseed) AS __rnS FROM __sltm005_ ORDER BY __rnS GROUP BY &id;QUIT;
+      CREATE TABLE &outdata(DROP=__rnS) AS SELECT *, MAX(RANUNI(&SLseed)) AS __rnS FROM __sltm005_ GROUP BY &id ORDER BY __rnS ;QUIT;
     %END;
   %END;
   %IF %__FalseCheck(&shuffle) %THEN %DO;
@@ -4967,11 +4974,18 @@ RUN;
   %END;
  DATA &outdata;
   SET &outdata;
-  __cvid__ = _n_;
+  %IF &ID =  %THEN __cvid__ = _n_;;
+  %IF &ID ^= %THEN %DO; 
+    RETAIN __cvid__ __lid__;
+    IF _n_=1 THEN __cvid__ = 0;
+    IF &id^=__lid__ THEN __cvid__ = __cvid__ + 1;
+    __lid__ = &id;
+    DROP __lid__;
+  %END;
   ARRAY __CV[&folds];
   ARRAY &y.__CV__[&folds];
   DO _k = 1 TO &FOLDS;
-  /* TODO - allow fold-maintenance of clusters identified by 'id' */
+  /* untested: allow fold-maintenance of clusters identified by 'id' */
    IF &SLSampSize/&folds*(_k-1) < __cvid__ <= &SLSampSize/&folds*_k THEN __CV[_k] = 0;
    ELSE __CV[_k] = 1;
    IF __CV[_k] = 1 THEN &y.__CV__[_k] = &Y;
@@ -5088,7 +5102,7 @@ RUN;
   %DO %WHILE(%SCAN(&library, &l_l)~=);
     %LET call = %SCAN(&library, &l_l);
     %IF %__Truecheck(&printlearner) %THEN %PUT &call;
-    %&call._in(Y=&Y,indata=&indata,outdata=&outdata,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&SLseed);
+    %&call._in(Y=&Y,indata=&indata,outdata=&outdata,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&SLseed);
     %IF %EVAL(&syserr>6) %THEN %DO; %PUT Errors occurred in super learner; DATA &outdata; SET &OUTDATA; p_&call&suff = .m; RUN;%END;
     %LET l_l = %EVAL(&l_l + 1);
   %END;
@@ -5107,7 +5121,7 @@ RUN;
   %DO %WHILE(%SCAN(&library, &l_l)~=);
     %LET call = %SCAN(&library, &l_l);
     %IF %__Truecheck(&printlearner) %THEN %PUT &call;
-    %&call._cn(Y=&Y,indata=&indata,outdata=&outdata,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&SLseed);
+    %&call._cn(Y=&Y,indata=&indata,outdata=&outdata,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&SLseed);
     %IF %EVAL(&syserr>6) %THEN %DO; %PUT Errors occurred in super learner; DATA &outdata; SET &OUTDATA; p_&call&suff = .m; RUN;%END;
     %LET l_l = %EVAL(&l_l + 1);
   %END;
@@ -5126,9 +5140,9 @@ RUN;
   %DO %WHILE(%SCAN(&library, &l_l)~=);
     %LET call = %SCAN(&library, &l_l);
     %IF %__Truecheck(&printlearner) %THEN %PUT &call;
-    %&call._in(Y=&Y,indata=&indata(WHERE=(%SCAN(&INTVARS, 1)=1)),outdata=&outdata.1,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&SLseed);
+    %&call._in(Y=&Y,indata=&indata(WHERE=(%SCAN(&INTVARS, 1)=1)),outdata=&outdata.1,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&SLseed);
     %IF %EVAL(&syserr>6) %THEN %DO; %PUT Errors occurred in super learner; DATA &outdata; SET &OUTDATA; p_&call&suff = .m; RUN;%END;
-    %&call._in(Y=&Y,indata=&indata(WHERE=(%SCAN(&INTVARS, 1)=0)),outdata=&outdata.0,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&SLseed);
+    %&call._in(Y=&Y,indata=&indata(WHERE=(%SCAN(&INTVARS, 1)=0)),outdata=&outdata.0,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&SLseed);
     %IF %EVAL(&syserr>6) %THEN %DO; %PUT Errors occurred in super learner; DATA &outdata; SET &OUTDATA; p_&call&suff = .m; RUN;%END;
     DATA &outdata; SET &outdata.0 &outdata.1; RUN;
     %LET l_l = %EVAL(&l_l + 1);
@@ -5147,9 +5161,9 @@ RUN;
   %DO %WHILE(%SCAN(&library, &l_l)~=);
     %LET call = %SCAN(&library, &l_l);
     %IF %__Truecheck(&printlearner) %THEN %PUT &call;
-    %&call._cn(Y=&Y,indata=&indata(WHERE=(%SCAN(&INTVARS, 1)=1)),outdata=&outdata.1,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&SLseed);
+    %&call._cn(Y=&Y,indata=&indata(WHERE=(%SCAN(&INTVARS, 1)=1)),outdata=&outdata.1,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&SLseed);
     %IF %EVAL(&syserr>6) %THEN %DO; %PUT Errors occurred in super learner; DATA &outdata; SET &OUTDATA; p_&call&suff = .m; RUN;%END;
-    %&call._cn(Y=&Y,indata=&indata(WHERE=(%SCAN(&INTVARS, 1)=0)),outdata=&outdata.0,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&SLseed);
+    %&call._cn(Y=&Y,indata=&indata(WHERE=(%SCAN(&INTVARS, 1)=0)),outdata=&outdata.0,binary_predictors=&binary_predictors,ordinal_predictors=&ordinal_predictors,nominal_predictors=&nominal_predictors,continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&SLseed);
     %IF %EVAL(&syserr>6) %THEN %DO; %PUT Errors occurred in super learner; DATA &outdata; SET &OUTDATA; p_&call&suff = .m; RUN;%END;
     DATA &outdata; SET &outdata.0 &outdata.1; RUN;
     %LET l_l = %EVAL(&l_l + 1);
@@ -5399,8 +5413,8 @@ RUN;
    SET &inDATa (WHERE =(__int=.o AND &Y > .z AND __train=1));
    %__RENAMEVARS(Y=&Y,library=&library,suff=_z);
   RUN;
-  DATA _NULL_; SET __sltm004_ END=__eof; IF __eof THEN CALL SYMPUT('SLSampSize', PUT(_N_, BEST9.));RUN;
-  %__SLnote(total observations used to calculate risk: %TRIM(&SLSampSize).);
+  DATA _NULL_; SET __sltm004_ END=__eof; IF __eof THEN CALL SYMPUT('SLNumObs', PUT(_N_, BEST9.));RUN;
+  %__SLnote(total observations/IDs used to calculate risk: %TRIM(&SLNumObs).);
   
   %LET libcount =  %_LIBCOUNT(library=&library);
   %IF %__TrueCheck(&verbose) %THEN %DO;  ODS SELECT ALL;%END;
@@ -5437,19 +5451,19 @@ RUN;
         *%__SLWarning(%STR(Method &method - L1 Loss function- is experimental. Use caution.));
         IMPVAR sl_pred{i IN OBS} = SUM{j in LIB} coef[j]*libmem[i,j] ;
         * get risk for each algorithm;
-        IMPVAR riskl{j in LIB} = 1/&SLSampSize * SUM{i in OBS}  ABS(__y[i] - libmem[i,j]);
+        IMPVAR riskl{j in LIB} = 1/&SLNumObs * SUM{i in OBS}  ABS(__y[i] - libmem[i,j]);
         * minimize the cross validated risk ;
         VAR rabs{OBS} >=0;
         CON rup{i IN OBS}:   rabs[i] >=  (__y[i] - sl_pred[i])*__weight[i];
         CON rdown{i IN OBS}: rabs[i] >= -(__y[i] - sl_pred[i])*__weight[i];
-        MIN risk = 1/&SLSampSize * SUM{i IN OBS} rabs[i];
+        MIN risk = 1/&SLNumObs * SUM{i IN OBS} rabs[i];
         SOLVE WITH nlp;
       %END;
       %IF (&method IN (NNLS CCLS OLS RIDGE CCRIDGE NNRIDGE)) %THEN %DO;
         *l2 loss function;
         IMPVAR sl_pred{i IN OBS} = SUM{j in LIB} coef[j]*libmem[i,j] ;
         * get risk for each algorithm;
-        IMPVAR riskl{j in LIB} = 1/&SLSampSize * SUM{i in OBS}  __weight[i]*(__y[i] - libmem[i,j])**2;
+        IMPVAR riskl{j in LIB} = 1/&SLNumObs * SUM{i in OBS}  __weight[i]*(__y[i] - libmem[i,j])**2;
         * minimize the cross validated risk ;
         MIN risk = %IF (&METHOD IN (RIDGE CCRIDGE NNRIDGE)) %THEN &slridgepen *1/(&SLSampSize)*(SUM{j in LIB} coef[j]**2) + ; 1/&SLSampSize * SUM{i IN OBS} __weight[i]*(__y[i] - sl_pred[i])**2 ;
         SOLVE WITH qp;
@@ -5458,10 +5472,10 @@ RUN;
         *negative of the binomial likelihood;
         IMPVAR sl_pred{i IN OBS} = EXPIT(SUM{j in LIB} coef[j]*LOGITBOUND(libmem[i,j], &TRIMBOUND, 1-&TRIMBOUND)) ; *v 0.31+;
         * get risk for each algorithm;
-        IMPVAR riskl{j in LIB} = -1/&SLSampSize * SUM{i in OBS} __weight[i]*((__y[i]*LOGBOUND(libmem[i,j], &TRIMBOUND, 1-&TRIMBOUND) + 
+        IMPVAR riskl{j in LIB} = -1/&SLNumObs * SUM{i in OBS} __weight[i]*((__y[i]*LOGBOUND(libmem[i,j], &TRIMBOUND, 1-&TRIMBOUND) + 
                                               (1-__y[i])*LOGBOUND(1-libmem[i,j], &TRIMBOUND, 1-&TRIMBOUND)));
         * minimize the cross validated risk ;
-        MIN risk = -1/&SLSampSize * SUM{i IN OBS} __weight[i]*((__y[i]*LOGBOUND(sl_pred[i], &TRIMBOUND, 1-&TRIMBOUND) + 
+        MIN risk = -1/&SLNumObs * SUM{i IN OBS} __weight[i]*((__y[i]*LOGBOUND(sl_pred[i], &TRIMBOUND, 1-&TRIMBOUND) + 
                                                 (1-__y[i])*LOGBOUND(1-sl_pred[i], &TRIMBOUND, 1-&TRIMBOUND)));
         SOLVE WITH nlp;
       %END;
@@ -5545,7 +5559,7 @@ RUN;
           %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); + __slcoef_&l_l * __v&l_l  %LET l_l = %EVAL(&l_l +1); %END;
           ))**2
           ;
-         pen = (&slridgepen/&SLSampSize)*(0
+         pen = (&slridgepen/&SLNumObs)*(0
           %LET l_l = 1;
           %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); + __slcoef_&l_l**2   %LET l_l = %EVAL(&l_l +1); %END;
           );
@@ -5559,7 +5573,7 @@ RUN;
           %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); + __slcoef_&l_l * __v&l_l  %LET l_l = %EVAL(&l_l +1); %END;
           ))**2
           ;
-         pen = (&slridgepen/&SLSampSize)*(0
+         pen = (&slridgepen/&SLNumObs)*(0
           %LET l_l = 1;
           %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); + ABS(__slcoef_&l_l)   %LET l_l = %EVAL(&l_l +1); %END;
           );
@@ -5567,7 +5581,9 @@ RUN;
         MODEL dummy ~ GENERAL(-&WT f - pen);
       %END;
       % IF (&method IN(BNNLAE BCCLAE BLAE)) %THEN %DO;
-         *least absolute error methods;
+         *least absolute error methods: useful for targeting median of predictive distribution;
+         *NOTE: BNNLAE seems to be failing due to ridging errors;
+         %IF (&method IN(BNNLAE)) %THEN %__SLWarning(%STR(BNNLAE often fails due to ridging errors. Try NNLAE or BCCLAE if this occurs.));
         %LET l_l = 1;
         f =  ABS(&y-( 0
           %DO %WHILE(%EVAL(&l_l<=&LIBCOUNT)); + __slcoef_&l_l * __v&l_l  %LET l_l = %EVAL(&l_l +1); %END;
@@ -5636,7 +5652,7 @@ RUN;
   %END;
   %IF (%__TrueCheck(&logreport) AND %__TrueCheck(&getfoldrisks)) %THEN %DO;
     * report coefficients to the log;
-    %__SLnote(Learner specific risks: N=&SLSampSize);
+    %__SLnote(Learner specific risks: N=&SLNumObs);
     DATA _NULL_; 
       SET &outrisk;
       %LET l_l = 1;
@@ -5821,7 +5837,7 @@ RUN;
   Write out the cross-validated loss function values for library members and Super Learner
   */
   %__SLnote(_cvriskreport);
-  DATA _NULL_; SET &INDATA(WHERE=(__int=.o)) END=__eof; IF __eof THEN CALL SYMPUT('SLSampSize', PUT(_N_, BEST9.));RUN;
+  DATA _NULL_; SET &INDATA(WHERE=(__int=.o)) END=__eof; IF __eof THEN CALL SYMPUT('SLNumObs', PUT(_N_, BEST9.));RUN;
   DATA __sltm003_(KEEP=risk: );
     SET &indata(WHERE=(__int=.o)) END = __eof;
     %IF (&method IN (NNLAE CCLAE LAE BNNLAE BCCLAE BLAE)) %THEN %DO;
@@ -5829,7 +5845,7 @@ RUN;
       %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
         %LET book = %SCAN(&LIBRARY, &l_l);
         RETAIN risk_&book 0 ;
-        risk_&book = risk_&book + (ABS(&Y - p_&book._z))/&SLSampSize ;
+        risk_&book = risk_&book + (ABS(&Y - p_&book._z))/&SLNumObs ;
         %LET l_l = %EVAL(&l_l + 1);
       %END;
     %END;
@@ -5838,7 +5854,7 @@ RUN;
       %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
         %LET book = %SCAN(&LIBRARY, &l_l);
         RETAIN risk_&book 0 ;
-        risk_&book = risk_&book + ((&Y - p_&book._z)**2)/&SLSampSize ;
+        risk_&book = risk_&book + ((&Y - p_&book._z)**2)/&SLNumObs ;
         %LET l_l = %EVAL(&l_l + 1);
       %END;
     %END;
@@ -5847,7 +5863,7 @@ RUN;
       %DO %WHILE(%SCAN(&LIBRARY, &l_l)~=);
         %LET book = %SCAN(&LIBRARY, &l_l);
         RETAIN risk_&book 0;
-        risk_&book = risk_&book + (&Y*LOG(MAX(MIN(p_&book._z, 1-&TRIMBOUND), &TRIMBOUND)) + (1-&Y)*LOG(1-MAX(MIN(p_&book._z, 1-&TRIMBOUND), &TRIMBOUND)))/&SLSampSize ;
+        risk_&book = risk_&book + (&Y*LOG(MAX(MIN(p_&book._z, 1-&TRIMBOUND), &TRIMBOUND)) + (1-&Y)*LOG(1-MAX(MIN(p_&book._z, 1-&TRIMBOUND), &TRIMBOUND)))/&SLNumObs ;
         %LET l_l = %EVAL(&l_l + 1);
       %END;
     %END;
@@ -6218,4 +6234,5 @@ OPTIONS NOMPRINT;
               Added nominal support for clustering (only in CV selection).
               Minor change with cvlasso, cvlassoint learners
               Added highly adaptive lasso learner (Experimental)
+*  18-SEPT-2018 Added processing by ID for cross-validation
 **********************************************************************************************************************/

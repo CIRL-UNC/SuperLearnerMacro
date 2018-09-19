@@ -361,7 +361,8 @@ sup {
  preddata=, 
  outdata=sl_out,
  dist=GAUSSIAN,
- method=NNLS
+ method=NNLS,
+ id=,
  by=,
  intvars=,
  binary_predictors=,
@@ -403,6 +404,7 @@ sup {
 <li>LASSO methods use an L1 penalized L2 loss function (LASSO regression - B methods only: BLASSO, BNNLASSO, BCCLASSO). Penalization level can be modified in the %_SuperLearner macro via the <strong>slridgepen</strong> parameter (default 0.3).</li>
 </ul></li>
 </ul></li>
+<li><p><strong>id</strong>: [OPTIONAL value = variable name] a variable that uniquely identifies clusters or individuals within a dataset where there are possibly multiple records per cluster/individual (e.g. discrete hazard estimation). </p></li>
 <li><p><strong>by</strong>: [OPTIONAL value = variable name] a by variable in the usual SAS usage. Separate super learner fits will be specified for each level of the by variable (only one allowed, unlike typical &ldquo;by&rdquo; variables. </p></li>
 <li><p><strong>intvars</strong>:[OPTIONAL value = variable name] an intervention variable that is included in the list of predictors. This is a convenience function that will make separate predictions for the intvars variable at 1 or 0 (with all other predictors remaining at their observed levels)</p></li>
 <li><p><strong>binary_predictors</strong>: [value =  blank, or a space separated list of variable names] advanced specification of predictors: a space separated list of binary predictors (OPTIONAL but at least one of the <strong>X</strong> or <strong>[coding]_predictors</strong> parameters must be specified)</p></li>

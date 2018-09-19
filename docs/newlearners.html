@@ -335,15 +335,31 @@ Conventions:</p>
 <li><p>to include all interaction terms between predictors, the predictors must include  &amp;SLIXterms, which may be a mix of discrete and continuous variables</p></li>
 </ol>
 
-<p>Example: creating a learner that fits a generalized linear model with a log link and under a gamma error distribution</p>
+<p>Example: creating a new learner that fits a generalized linear model with a log link and under a gamma error distribution</p>
 
 <div><pre><code class="language-none"> %MACRO custom_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);  
   PROC GENMOD DATA = &amp;indata;
-  %IF ((&amp;binary_predictors~=) OR (&amp;ordinal_predictors~=) OR (&amp;nominal_predictors~=)) %THEN CLASS &amp;binary_predictors &amp;ordinal_predictors &amp;nominal_predictors ;;
-   MODEL &amp;Y = &amp;binary_predictors &amp;ordinal_predictors &amp;nominal_predictors &amp;continuous_predictors / LINK=LOG D=GAMMA;
-   OUTPUT OUT = &amp;OUTDATA PRED=p_custom&amp;SUFF; /*change predicted value name with p_[libraryname]&amp;suff*/
+    %IF &amp;WEIGHT^= %THEN WEIGHT &amp;weight;;
+    %IF ((&amp;binary_predictors~=) OR (&amp;ordinal_predictors~=) OR (&amp;nominal_predictors~=)) %THEN CLASS &amp;binary_predictors &amp;ordinal_predictors &amp;nominal_predictors ;;
+    MODEL &amp;Y = &amp;binary_predictors &amp;ordinal_predictors &amp;nominal_predictors &amp;continuous_predictors / LINK=LOG D=GAMMA;
+    OUTPUT OUT = &amp;OUTDATA PRED=p_custom&amp;SUFF; /*change predicted value name with p_[libraryname]&amp;suff*/
   RUN;
 %MEND custom_cn; /*optional: include macro name in mend statement with [libraryname]_cn*/</code></pre></div>
+
+<p>Example: creating a new learner that implements a regression tree with 12 requested leaves</p>
+
+<div><pre><code class="language-none">%MACRO cart12_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);
+ PROC HPSPLIT DATA = &amp;indata SEED=&amp;seed  CVMETHOD=NONE ;
+   FORMAT &amp;Y;
+   %IF &amp;WEIGHT^= %THEN WEIGHT &amp;weight;;
+   TARGET &amp;Y / LEVEL = interval;
+   %IF (&amp;ordinal_predictors~=) OR (&amp;binary_predictors~=) OR (&amp;nominal_predictors~=) %THEN INPUT &amp;binary_predictors &amp;ordinal_predictors &amp;nominal_predictors / LEVEL = nominal;;
+   %IF (&amp;continuous_predictors~=) %THEN INPUT &amp;continuous_predictors / LEVEL = interval;;
+   ID _ALL_;
+   PRUNE CC (LEAVES=12);
+   OUTPUT out=&amp;outdata (drop =  _node_ _leaf_ RENAME=(p_&amp;Y = p_cart12&amp;SUFF));
+ RUN;
+%MEND cart12_cn;</code></pre></div>
 
 <p>Custom leaners must have the same structure of the macro call, but the macro need not actually use the arguments. For example, rather than using <strong>[coding]_predictors</strong> arguments, one could hard code the model predictors, including interaction terms. Thus, one could create multiple learners with different covariate sets as a way to select from a number of possible parameterizations of the same model, but with different covariates (i.e. one could select the model with the lowest loss function, or take the model average based on the super learner fit).</p>
 

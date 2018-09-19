@@ -230,7 +230,7 @@ Example 3b: creating a new learner (CART with different tuning parameters)
   
   
   *adding in a custom learner (custom_cn for 'continuous' and custom_in for 'binary');
-  * example: regression tree with only 4 OR 8 leaves/terminal nodes;
+  * example: regression tree with only 4 OR 12 leaves/terminal nodes;
  %MACRO cart4_cn(
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
@@ -252,7 +252,7 @@ Example 3b: creating a new learner (CART with different tuning parameters)
     OUTPUT out=&outdata (drop =  _node_ _leaf_ RENAME=(p_&Y = p_cart4&SUFF));
   RUN;
 %MEND cart4_cn;
- %MACRO cart8_cn(
+ %MACRO cart12_cn(
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
@@ -269,17 +269,17 @@ Example 3b: creating a new learner (CART with different tuning parameters)
     %IF (&continuous_predictors~=) %THEN 
           INPUT &continuous_predictors / LEVEL = interval;;
     ID _ALL_;
-	PRUNE CC (LEAVES=8);
-    OUTPUT out=&outdata (drop =  _node_ _leaf_ RENAME=(p_&Y = p_cart8&SUFF));
+	PRUNE CC (LEAVES=12);
+    OUTPUT out=&outdata (drop =  _node_ _leaf_ RENAME=(p_&Y = p_cart12&SUFF));
   RUN;
-%MEND cart8_cn;
+%MEND cart12_cn;
   
   %SuperLearner(Y=y,
                 binary_predictors= x l,
                 continuous_predictors=c c2,
                 indata=a, 
                 outdata=sl_testdata,
-                library= linreg gampl cart cart4 cart8, /* note how new learner is used*/
+                library= linreg gampl cart cart4 cart12, /* note how new learner is used*/
                 folds=10, 
                 method=CCLS, 
                 dist=GAUSSIAN
