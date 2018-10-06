@@ -1,4 +1,4 @@
-%PUT extra_learners v1.0.5;
+%PUT extra_learners v1.0.6;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: sas_superlearner_extra_learners.sas
