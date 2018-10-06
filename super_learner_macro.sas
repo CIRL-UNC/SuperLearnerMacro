@@ -1,8 +1,8 @@
-%PUT super learner macro v1.1.1;
+%PUT super learner macro v1.1.3;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version: 1.1.1
+* Version: 1.1.3
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS 
@@ -77,7 +77,7 @@ This programs structure is:
                      library= glm, 
                      trtstrat=FALSE, 
                      folds=10, 
-                     method=NNLS,
+                     method=BNNLS,
                      /* deprecated */
                      predvar=,
                      gfstrat=, 
@@ -280,7 +280,7 @@ SuperLearner:
                      dist= GAUSSIAN,
                      library= , 
                      folds= 10, 
-                     method= NNLS
+                     method= BNNLS
 );
 /*
 CVSuperLearner:
@@ -610,7 +610,7 @@ _main: the absolute barebones super learner macro (not to be called on its own)
                        library= , 
                        slfolds=10 , 
                        cvslfolds=10,
-                       method= NNLS,
+                       method=BNNLS,
                        outcvresults=cvsl_summary,
                        reportcvfolds=FALSE,
                        printfoldres=FALSE ,
@@ -1137,7 +1137,7 @@ RUN;
 *%__makeintx(bins = &binary_predictors,  others = &ordinal_predictors &nominal_predictors &continuous_predictors);
 
 %MACRO __installR(package);
-  %LOCAL _pkg;
+  %LOCAL _pkg __git;
   /* note: this function can be called directly to install an R package where sas will find it */
   %__SLnote(%STR(__installR: Installing R packages if necessary. ));
   %LET rinst=FALSE;
@@ -1155,6 +1155,7 @@ RUN;
        %END;
        %LET rinst=TRUE;
        %LET _pkg = &package;
+       %LET __git=;
        %IF &_pkg= %THEN %DO;
          %IF &book=r_rf %THEN %LET _pkg=randomForest;;
          %IF &book=r_bart %THEN %LET _pkg=dbarts;;
@@ -1171,11 +1172,27 @@ RUN;
          %IF &book=r_rpart %THEN %LET _pkg=rpart;;
          %IF &book=r_rpartprune %THEN %LET _pkg=rpart;;
          %IF &book=r_sl %THEN %LET _pkg=SuperLearner;;
+         %IF &book=r_bkmr %THEN %LET _pkg=bkmr;;
+         %IF &book=r_wqs %THEN %DO;
+         	%LET _pkg=SLmix;;
+         	%LET __git=alexpkeil1;
+         %END;
+         %IF &book=r_gwqs %THEN %DO;
+         	%LET _pkg=SLmix;;
+         	%LET __git=alexpkeil1;
+         %END;
        %END;
-       %LET rcodeb = %STR(if(!is.element(%"&_pkg%", installed.packages())) install.packages(%"&_pkg%", repos = %"https://cran.mtu.edu%", dependencies=TRUE));
+       %IF &__git= %THEN %DO;
+         %LET rcodeb = %STR(if(!is.element(%"&_pkg%", installed.packages())) install.packages(%"&_pkg%", repos = %"https://cran.mtu.edu%", dependencies=TRUE));
+         %LET rcodebb = ;
+       %END;
+       %IF &__git^= %THEN %DO;
+         %LET rcodeb = %STR(if(!is.element(%"devtools%", installed.packages())) install.packages(%"devtools%", repos = %"https://cran.mtu.edu%", dependencies=TRUE));
+         %LET rcodebb = %STR(if(!is.element(%"&_pkg%", installed.packages())) devtools::install_github(%"&__git/&_pkg%", dependencies=TRUE));
+       %END;
        DATA _null_;
         FILE instcode;
-        PUT "&rcodea";PUT "&rcodeb";PUT "&rcodec";
+        PUT "&rcodea";PUT 'options("install.packages.compile.from.source"="always")'; PUT "&rcodeb";PUT "&rcodebb";PUT "&rcodec";
        RUN;
        PROC IML;
         %IF &_pkg^= %THEN %INCLUDE instcode;;
@@ -1186,9 +1203,9 @@ RUN;
 %MEND __installR;
 
 %MACRO __forceinstallR(package);
-  %LOCAL _pkg;
+  %LOCAL _pkg __git;
   /* note: this function can be called directly to install an R package where sas will find it */
-  %__SLnote(%STR(__installR: Installing R packages if necessary. ));
+  %__SLnote(%STR(__forceinstallR: Installing R packages if necessary. ));
   %LET rinst=FALSE;
    FILENAME instcode TEMP; *rsubmit requires use of include statement with code from file;
    %LET rcodea = %STR(SUBMIT / r;);
@@ -1199,10 +1216,11 @@ RUN;
      %IF %SUBSTR(&book, 1,2)=r_ %THEN %DO;
        %IF &rinst=FALSE %THEN %DO;
           %__SLwarning(%str(Please note that R learners are case sensitive, so check the case of your variable names if you get strange errors from PROC IML/R.));
-          %__SLnote(%str(R needs to be installed and Rlang system option must be enabled in SAS. See http://documentation.sas.com/?docsetId=imlug&docsetTarget=imlug_r_sect003.htm&docsetVersion=14.3&locale=en for details.));
+          %__SLnote(%nrstr('R needs to be installed and Rlang system option must be enabled in SAS. See http://documentation.sas.com/?docsetId=imlug&docsetTarget=imlug_r_sect003.htm&docsetVersion=14.3&locale=en for details.'));
        %END;
        %LET rinst=TRUE;
        %LET _pkg = &package;
+       %LET __git=;
        %IF &_pkg= %THEN %DO;
          %IF &book=r_rf %THEN %LET _pkg=randomForest;;
          %IF &book=r_bart %THEN %LET _pkg=dbarts;;
@@ -1219,11 +1237,27 @@ RUN;
          %IF &book=r_rpart %THEN %LET _pkg=rpart;;
          %IF &book=r_rpartprune %THEN %LET _pkg=rpart;;
          %IF &book=r_sl %THEN %LET _pkg=SuperLearner;;
+         %IF &book=r_bkmr %THEN %LET _pkg=bkmr;;
+         %IF &book=r_wqs %THEN %DO;
+         	%LET _pkg=SLmix;;
+         	%LET __git=alexpkeil1;
+         %END;
+         %IF &book=r_gwqs %THEN %DO;
+         	%LET _pkg=SLmix;;
+         	%LET __git=alexpkeil1;
+         %END;
        %END;
-       %LET rcodeb = %STR(install.packages(%"&_pkg%", repos = %"https://cran.mtu.edu%", dependencies=TRUE));
+       %IF &__git= %THEN %DO;
+         %LET rcodeb = %STR(install.packages(%"&_pkg%", repos = %"https://cran.mtu.edu%", dependencies=TRUE));
+         %LET rcodebb = ;
+       %END;
+       %IF &__git^= %THEN %DO;
+         %LET rcodeb = %STR(install.packages(%"devtools%", repos = %"https://cran.mtu.edu%", dependencies=TRUE, force_deps=TRUE, upgrade_dependencies=TRUE));
+         %LET rcodebb = %STR(devtools::install_github(%"&__git/&_pkg%", dependencies=TRUE, force_deps=TRUE, upgrade_dependencies=TRUE));
+       %END;
        DATA _null_;
         FILE instcode;
-        PUT "&rcodea";PUT "&rcodeb";PUT "&rcodec";
+        PUT "&rcodea";PUT 'options("install.packages.compile.from.source"="always")'; PUT "&rcodeb";PUT "&rcodebb";PUT "&rcodec";
        RUN;
        PROC IML;
         %IF &_pkg^= %THEN %INCLUDE instcode;;
@@ -4947,6 +4981,204 @@ RUN;
 %MEND r_sl_in; /*optional: include macro name in mend statement with [libraryname]_cn*/
 *%r_sl_in(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
+%MACRO r_bkmr_cn(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+  );
+  %__SLnote(%str(R package 'bkmr' must be installed));;
+  DATA __SLtm0016_;
+   SET &indata;
+   FORMAT &Y;
+   %IF &weight= %THEN %DO;
+     %LET weight=wwwwww;
+     wwwwww=1;
+   %END;
+   KEEP &Y &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &weight;
+  RUN;
+  FILENAME rcode TEMP; *rsubmit requires use of include statement with code from file;
+  * write R statements to file;
+  DATA _null_;
+   FILE rcode;
+   PUT 'SUBMIT y w seed/ R;';
+   PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
+   PUT 'set.seed(&seed)';
+   PUT 'suppressWarnings(suppressMessages(library("bkmr")))';
+   PUT 'Y = mdata[,"&Y"]';
+   PUT 'X = mdata[,-grep(paste0("&y", "|", "&w"), names(mdata))]';
+   PUT 'Xfl = rdata[,-grep(paste0("&y", "|", "&w"), names(rdata))]';
+   *PUT 'W = mdata[,"&w"]';
+   PUT 'suppressWarnings(suppressMessages(rmod <- bkmr::kmbayes(y=Y,Z=X, iter = 1000, family = "gaussian", verbose = FALSE, )))';
+   PUT 'pMat <- bkmr::SamplePred(rmod, Znew=Xfl, Xnew = cbind(0), type="response")';
+   PUT 'p_r <- as.numeric(apply(pMat, 2, mean))';
+   PUT 'ENDSUBMIT;';
+  RUN;
+  /*%PUT &rcode ;*/
+  PROC IML;
+   RUN ExportDataSetToR("Work.__SLtm0016_", "rdata");
+   y = "&y";
+   w = "&weight";
+   seed = "&seed";
+   %INCLUDE rcode;
+   CALL ImportDatasetFromR("work.__rpreds", "p_r" );
+  QUIT;
+  OPTIONS MERGENOBY=NOWARN;
+  DATA &outdata;
+    MERGE &indata __rpreds(RENAME=(p_r = p_r_bkmr&SUFF));
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+  PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
+%MEND r_bkmr_cn; /*optional: include macro name in mend statement with [libraryname]_cn*/
+*%r_bkmr_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
+
+%MACRO r_gwqs_cn(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+  );
+  %__SLnote(%str(R package 'SLmix' must be installed));;
+  DATA __SLtm0016_;
+   SET &indata;
+   FORMAT &Y;
+   %IF &weight= %THEN %DO;
+     %LET weight=wwwwww;
+     wwwwww=1;
+   %END;
+   KEEP &Y &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &weight;
+  RUN;
+  FILENAME rcode TEMP; *rsubmit requires use of include statement with code from file;
+  * write R statements to file;
+  DATA _null_;
+   FILE rcode;
+   PUT 'SUBMIT y w seed/ R;';
+   PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
+   PUT 'set.seed(&seed)';
+   PUT 'suppressWarnings(suppressMessages(library("SLmix")))';
+   PUT 'Y = mdata[,"&Y"]';
+   PUT 'X = mdata[,-grep(paste0("&y", "|", "&w"), names(mdata))]';
+   PUT 'nm = names(X)';
+   PUT 'Xfl = rdata[,-grep(paste0("&y", "|", "&w"), names(rdata))]';
+   PUT 'X$Y = Y';
+   *PUT 'W = mdata[,"&w"]';
+   PUT 'suppressWarnings(suppressMessages(rmod <- ml.gwqs(Y ~ NULL, mix_name=nm, data=X, q = 4, b=100, b1_pos=TRUE, family="gaussian")))';
+   PUT 'p_r <- predict(fit=rmod, mix_name=nm, newdata=Xfl)';
+   PUT 'ENDSUBMIT;';
+  RUN;
+  /*%PUT &rcode ;*/
+  PROC IML;
+   RUN ExportDataSetToR("Work.__SLtm0016_", "rdata");
+   y = "&y";
+   w = "&weight";
+   seed = "&seed";
+   %INCLUDE rcode;
+   CALL ImportDatasetFromR("work.__rpreds", "p_r" );
+  QUIT;
+  OPTIONS MERGENOBY=NOWARN;
+  DATA &outdata;
+    MERGE &indata __rpreds(RENAME=(p_r = p_r_gwqs&SUFF));
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+  PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
+%MEND r_gwqs_cn; /*optional: include macro name in mend statement with [libraryname]_cn*/
+*%r_gwqs_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
+
+%MACRO r_bkmr_in(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+  );
+  %__SLnote(%str(R package 'bkmr' must be installed));;
+  DATA __SLtm0016_;
+   SET &indata;
+   FORMAT &Y;
+   %IF &weight= %THEN %DO;
+     %LET weight=wwwwww;
+     wwwwww=1;
+   %END;
+   KEEP &Y &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &weight;
+  RUN;
+  FILENAME rcode TEMP; *rsubmit requires use of include statement with code from file;
+  * write R statements to file;
+  DATA _null_;
+   FILE rcode;
+   PUT 'SUBMIT y w seed/ R;';
+   PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
+   PUT 'set.seed(&seed)';
+   PUT 'suppressWarnings(suppressMessages(library("bkmr")))';
+   PUT 'Y = mdata[,"&Y"]';
+   PUT 'X = mdata[,-grep(paste0("&y", "|", "&w"), names(mdata))]';
+   PUT 'Xfl = rdata[,-grep(paste0("&y", "|", "&w"), names(rdata))]';
+   *PUT 'W = mdata[,"&w"]';
+   PUT 'suppressWarnings(suppressMessages(rmod <- bkmr::kmbayes(y=Y,Z=X, iter = 1000, family = "binomial", verbose = FALSE, )))';
+   PUT 'pMat <- bkmr::SamplePred(rmod, Znew=Xfl, Xnew = cbind(0), type="response")';
+   PUT 'p_r <- as.numeric(apply(pMat, 2, mean))';
+   PUT 'ENDSUBMIT;';
+  RUN;
+  /*%PUT &rcode ;*/
+  PROC IML;
+   RUN ExportDataSetToR("Work.__SLtm0016_", "rdata");
+   y = "&y";
+   w = "&weight";
+   seed = "&seed";
+   %INCLUDE rcode;
+   CALL ImportDatasetFromR("work.__rpreds", "p_r" );
+  QUIT;
+  OPTIONS MERGENOBY=NOWARN;
+  DATA &outdata;
+    MERGE &indata __rpreds(RENAME=(p_r = p_r_bkmr&SUFF));
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+  PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
+%MEND r_bkmr_in; /*optional: include macro name in mend statement with [libraryname]_cn*/
+*%r_bkmr_in(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
+
+%MACRO r_gwqs_in(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+  );
+  %__SLnote(%str(R package 'SLmix' must be installed));;
+  DATA __SLtm0016_;
+   SET &indata;
+   FORMAT &Y;
+   %IF &weight= %THEN %DO;
+     %LET weight=wwwwww;
+     wwwwww=1;
+   %END;
+   KEEP &Y &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &weight;
+  RUN;
+  FILENAME rcode TEMP; *rsubmit requires use of include statement with code from file;
+  * write R statements to file;
+  DATA _null_;
+   FILE rcode;
+   PUT 'SUBMIT y w seed/ R;';
+   PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
+   PUT 'set.seed(&seed)';
+   PUT 'suppressWarnings(suppressMessages(library("SLmix")))';
+   PUT 'Y = mdata[,"&Y"]';
+   PUT 'X = mdata[,-grep(paste0("&y", "|", "&w"), names(mdata))]';
+   PUT 'nm = names(X)';
+   PUT 'Xfl = rdata[,-grep(paste0("&y", "|", "&w"), names(rdata))]';
+   PUT 'X$Y = Y';
+   *PUT 'W = mdata[,"&w"]';
+   PUT 'suppressWarnings(suppressMessages(rmod <- ml.gwqs(Y ~ NULL, mix_name=nm, data=X, q = 4, b=100, b1_pos=TRUE, family="binomial")))';
+   PUT 'p_r <- predict(fit=rmod, mix_name=nm, newdata=Xfl)';
+   PUT 'ENDSUBMIT;';
+  RUN;
+  /*%PUT &rcode ;*/
+  PROC IML;
+   RUN ExportDataSetToR("Work.__SLtm0016_", "rdata");
+   y = "&y";
+   w = "&weight";
+   seed = "&seed";
+   %INCLUDE rcode;
+   CALL ImportDatasetFromR("work.__rpreds", "p_r" );
+  QUIT;
+  OPTIONS MERGENOBY=NOWARN;
+  DATA &outdata;
+    MERGE &indata __rpreds(RENAME=(p_r = p_r_gwqs&SUFF));
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+  PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
+%MEND r_gwqs_in; /*optional: include macro name in mend statement with [libraryname]_cn*/
+*%r_gwqs_in(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
+
 ********************************************************;
 * Part 3: main functions;
 ********************************************************;
@@ -6235,4 +6467,6 @@ OPTIONS NOMPRINT;
               Minor change with cvlasso, cvlassoint learners
               Added highly adaptive lasso learner (Experimental)
 *  18-SEPT-2018 Added processing by ID for cross-validation
+*  23-SEPT-2018 Added Bayesian kernel machine regression (R) and generalized weighted 
+              quantile sums (R)
 **********************************************************************************************************************/

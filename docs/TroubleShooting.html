@@ -322,7 +322,12 @@ sup {
 <h3 id="toc_1">Troubleshooting</h3>
 
 <ol>
-<li><strong>Super learner gives an error that has &ldquo;super learner&rdquo; in the note that accompanies the error (check sas log)</strong>
+<li><strong>SAS ERROR: Procedure OPTMODEL not found</strong>
+
+<ul>
+<li>Use one of the &ldquo;B&rdquo; methods: e.g. BNNLS, rather than NNLS.</li>
+</ul></li>
+<li> <strong>Super learner gives an error that has &ldquo;super learner&rdquo; in the note that accompanies the error (check sas log)</strong>
 
 <ul>
 <li>The macro was written to make most error text explain the problem and give a possible solution. Follow the instructions and/or check for spelling errors or omitted commas in the call to the macro.</li>
@@ -336,7 +341,7 @@ sup {
 <li><strong>Errors related to running out of memory</strong>
 
 <ul>
-<li>Did this happen before super learner reached X out of X folds? (e.g. at 3 of 10 folds? - check SAS log). Try reducing the number of learners until you have identified which one caused the error. Candidates are: R based learners (since these run in memory), and <strong>gam</strong>.</li>
+<li>Did this happen before super learner reached X out of X folds? (e.g. at 3 of 10 folds? - check SAS log). Try reducing the number of learners until you have identified which one caused the error. Some <em>a priori</em> candidates are the R based learners (since these run in memory), and <strong>gam</strong>.</li>
 <li>Did this happen after reaching the total number of folds (e.g. after reaching 10 of 10 folds? - check SAS log)? This likely means you have a large dataset. Try changing the <em>method</em> parameter by appending a &ldquo;B&rdquo; as a prefix (e.g. NNLS would become BNNLS). The default optimization routine in super learner can run out of memory but has been tested more thoroughly. The &ldquo;B&rdquo; (big) methods can handle much larger datasets.</li>
 </ul></li>
 <li><strong>Errors related to Newton-raphson algorithm or optimization failing</strong>

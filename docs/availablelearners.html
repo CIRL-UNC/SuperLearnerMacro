@@ -325,6 +325,8 @@ sup {
 <p><strong>learner</strong>: description (SAS procedure)</p>
 
 <ul>
+<li><strong>ahal</strong>: approximate (faster) highly adaptive LASSO - uses non-parametric representation of data using indicator basis functions, selects LASSO parameter via minimum AICC across models using a range of 100 possible LASSO parameter values (HPGENSELECT)</li>
+<li><strong>ahalb</strong>:  approximate (faster) highly adaptive LASSO, version 2 - uses non-parametric representation of data using indicator basis functions, selects LASSO parameter via 10-fold cross validation from a range of 100 possible LASSO parameter values (similar to the R function &lsquo;hal&rsquo;) - warning for binary outcome: does not respect [0,1] probability space (GLMSELECT)</li>
 <li><strong>back</strong>: backward selection by AICC (HPGENSELECT)</li>
 <li>*<strong>bagging</strong>: bootstrap aggregation of regression/classification trees (ARBOR)</li>
 <li>*<strong>bayesnet</strong>: Bayesian network [binary only] (HPBNET)</li>
@@ -338,13 +340,11 @@ sup {
 <li><strong>gampl</strong>: faster generalized additive model with 3 df splines on all continuous variables (GAMPL)</li>
 <li><strong>glm</strong>: linear or logistic regression: slower wrappers for logit and linreg (GENMOD/REG)</li>
 <li><strong>hal</strong>: highly adaptive LASSO - uses non-parametric representation of data using indicator basis functions, selects LASSO parameter via 10-fold cross validation with exhaustive search - warning for binary outcome: does not respect [0,1] probability space (GLMSELECT)</li>
-<li><strong>ahal</strong>: approximate (faster) highly adaptive LASSO - uses non-parametric representation of data using indicator basis functions, selects LASSO parameter via minimum AICC across models using a range of 100 possible LASSO parameter values (HPGENSELECT)</li>
-<li><strong>ahalb</strong>:  approximate (faster) highly adaptive LASSO, version 2 - uses non-parametric representation of data using indicator basis functions, selects LASSO parameter via 10-fold cross validation from a range of 100 possible LASSO parameter values (similar to the R function &lsquo;hal&rsquo;) - warning for binary outcome: does not respect [0,1] probability space (GLMSELECT)</li>
-<li><strong>knn</strong>: [bernoulli only] k-nearest neighbors classification (DISCRIM)</li>
 <li><strong>hpglm</strong>: main term logistic/linear regression with multithreading (HPLOGISTIC/HPREG)</li>
 <li><strong>hplar</strong>: least angle regression with multithreading - warning for binary outcome: does not respect [0,1] probability space (HPREG)</li>
 <li><strong>hplogit</strong>: main term logistic regression with multithreading (HPLOGISTIC)</li>
 <li><strong>hplinreg</strong>: main term linear regression with multithreading (HPREG)</li>
+<li><strong>knn</strong>: [bernoulli only] k-nearest neighbors classification (DISCRIM)</li>
 <li><strong>lar</strong>: least angle regression - warning for binary outcome: does not respect [0,1] probability space (GLMSELECT)</li>
 <li><strong>lasso</strong>: least absolute shrinkage and selection operator with multithreading (HPGENSELECT)</li>
 <li><strong>lassob</strong>: LASSO with glmselect [use caution with binary variables] - may be appropriate for older sas versions (GLMSELECT)</li>
@@ -364,6 +364,8 @@ sup {
 <li><strong>rfoob</strong>: random forest, using out of bag predictions and modified selection criteria (HPFOREST)</li>
 <li>*<strong>sherwood</strong>: random forest, sampling with replacement (ARBOR)</li>
 <li><strong>swise</strong>: Stepwise model selection - may be appropriate alternative to lasso for older sas versions (HPGENSELECT)</li>
+<li>*<strong>svm</strong>: Support vector machine - linear kernel [binary only] (HPSVM)</li>
+<li>*<strong>svmrbf</strong>: Support vector machine - radial basis function kernel [binary only] (HPSVM)</li>
 </ul>
 
 <p>Also includes multiple learners that are identical to other learners but include all first order interaction terms:</p>

@@ -183,8 +183,8 @@ generalized additive models: gampl procedure
  df = 3 to 8 (2 causes errors for some reason)
 ******************************************************************************************/
 %MACRO gampltempl_cn(deg=,
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* GENERALIZED ADDITIVE MODEL for continuous variable (using alternative sas proc) */
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
@@ -219,32 +219,32 @@ generalized additive models: gampl procedure
 
 %MACRO gampl3_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
       %gampltempl_cn(deg=3, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
-      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND gampl3_cn;
 
 %MACRO gampl4_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
       %gampltempl_cn(deg=4, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
-      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND gampl4_cn;
 
 %MACRO gampl5_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
       %gampltempl_cn(deg=5, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
-      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND gampl5_cn;
 
 %MACRO gampl6_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
       %gampltempl_cn(deg=6, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
-      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND gampl6_cn;
 
 %MACRO gampl7_cn( Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
       %gampltempl_cn(deg=7,Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
-      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND gampl7_cn;
 
 %MACRO gampl8_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
       %gampltempl_cn(deg=8, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
-      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND gampl8_cn;
 
 
@@ -255,8 +255,8 @@ generalized additive models (proc gam):
 
 
 %MACRO gamtempl_cn(deg=,
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* GENERALIZED ADDITIVE MODEL for continuous variable (normal assumption)*/
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
@@ -288,45 +288,45 @@ generalized additive models (proc gam):
 
 %MACRO gam2_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
       %gamtempl_cn(deg=2, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
-      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND gam2_cn;
 
 %MACRO gam3_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
       %gamtempl_cn(deg=3, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
-      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND gam3_cn;
 
 %MACRO gam4_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
       %gamtempl_cn(deg=4, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
-      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND gam4_cn;
 
 %MACRO gam5_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
       %gamtempl_cn(deg=5, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
-      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND gam5_cn;
 
 %MACRO gam6_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
       %gamtempl_cn(deg=6, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
-      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND gam6_cn;
 
 %MACRO gam7_cn( Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
       %gamtempl_cn(deg=7,Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
-      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND gam7_cn;
 
 %MACRO gam8_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=);
       %gamtempl_cn(deg=8, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
-      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,suff=&suff,seed=&seed);
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND gam8_cn;
 /******************************************************************************************
 neural network:
  size 2, 3, 4, 5 (number of units in hidden layer)
 ******************************************************************************************/
 %MACRO nn2_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* neural network regression*/
   &suppresswarn %__SLwarning(%str(This functionality (neural networks) is still experimental));
@@ -350,8 +350,8 @@ neural network:
 
 
 %MACRO nn3_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* neural network regression*/
   &suppresswarn %__SLwarning(%str(This functionality (neural networks) is still experimental));
@@ -374,8 +374,8 @@ neural network:
 %MEND nn3_cn;
 
 %MACRO nn4_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* neural network regression*/
   &suppresswarn %__SLwarning(%str(This functionality (neural networks) is still experimental));
@@ -398,8 +398,8 @@ neural network:
 %MEND nn4_cn;
 
 %MACRO nn5_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* neural network regression*/
   &suppresswarn %__SLwarning(%str(This functionality (neural networks) is still experimental));
@@ -422,8 +422,8 @@ neural network:
 %MEND nn5_cn;
 
 %MACRO nn15_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* neural network regression*/
   &suppresswarn %__SLwarning(%str(This functionality (neural networks) is still experimental));
@@ -446,8 +446,8 @@ neural network:
 %MEND nn15_cn;
 
 %MACRO nn15_2_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* neural network regression*/
   &suppresswarn %__SLwarning(%str(This functionality (neural networks) is still experimental));
@@ -472,8 +472,8 @@ neural network:
 
 
 %MACRO nn5_5_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* neural network regression*/
   &suppresswarn %__SLwarning(%str(This functionality (neural networks) is still experimental));
@@ -497,8 +497,8 @@ neural network:
 %MEND nn5_5_cn;
 
 %MACRO nn6_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* neural network regression*/
   &suppresswarn %__SLwarning(%str(This functionality (neural networks) is still experimental));
@@ -527,8 +527,8 @@ neural net classification
 
 
 %MACRO nn15_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* neural network classification*/
   &suppresswarn %__SLwarning(%str(This functionality (neural networks) is still experimental));
@@ -551,8 +551,8 @@ neural net classification
 %MEND nn15_in;
 
 %MACRO nn15_2_in(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* neural network classification*/
   &suppresswarn %__SLwarning(%str(This functionality (neural networks) is still experimental));
@@ -580,8 +580,8 @@ loess:
  smoothing: 0.75, 0.5, 0.25, 0.1
 ******************************************************************************************/
 %MACRO loess75_cn(      
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
  /* local regression*/ 
 PROC LOESS DATA = &indata;
@@ -591,8 +591,8 @@ RUN;
 %MEND loess75_cn; 
 
 %MACRO loess50_cn(      
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
  /* local regression*/ 
 PROC LOESS DATA = &indata;
@@ -602,8 +602,8 @@ RUN;
 %MEND loess50_cn; 
 
 %MACRO loess25_cn(      
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
  /* local regression*/ 
 PROC LOESS DATA = &indata;
@@ -613,8 +613,8 @@ RUN;
 %MEND loess25_cn; 
 
 %MACRO loess10_cn(      
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
  /* local regression*/ 
 PROC LOESS DATA = &indata;
@@ -635,8 +635,8 @@ CART:
 
 
 %MACRO cartALL_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* regression tree, no cross validation */
   
@@ -655,8 +655,8 @@ CART:
 %MEND cartALL_cn;
 
 %MACRO cart25_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* regression tree, no cross validation */
   
@@ -676,8 +676,8 @@ CART:
 
 
 %MACRO cart10_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* regression tree, no cross validation */
   
@@ -697,8 +697,8 @@ CART:
 
 
 %MACRO cart05_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* regression tree, no cross validation */
   
@@ -724,8 +724,8 @@ random forest:
 
 
 %MACRO rf10_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* RANDOM FOREST, continuous */
   
@@ -744,8 +744,8 @@ random forest:
 %MEND rf10_cn;
 
 %MACRO rf25_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* RANDOM FOREST, continuous */
   
@@ -764,8 +764,8 @@ random forest:
 %MEND rf25_cn;
 
 %MACRO rf50_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* RANDOM FOREST, continuous */
   
@@ -789,8 +789,8 @@ bootstrap aggregation of regression trees:
  min split = 5
 ******************************************************************************************/
 %MACRO bagging00_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* bootstrap aggregation*/
   &suppresswarn %__SLwarning(%str(This function (bagging) is experimental and untested below SAS 9.4 TS1M3));
@@ -813,8 +813,8 @@ bootstrap aggregation of regression trees:
 
 
 %MACRO bagging01_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* bootstrap aggregation*/
   &suppresswarn %__SLwarning(%str(This function (bagging) is experimental and untested below SAS 9.4 TS1M3));
@@ -836,8 +836,8 @@ bootstrap aggregation of regression trees:
 %MEND bagging01_cn;
 
 %MACRO bagging10_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* bootstrap aggregation*/
   &suppresswarn %__SLwarning(%str(This function (bagging) is experimental and untested below SAS 9.4 TS1M3));
@@ -859,8 +859,8 @@ bootstrap aggregation of regression trees:
 %MEND bagging10_cn;
 
 %MACRO baggingms5_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* bootstrap aggregation*/
   &suppresswarn %__SLwarning(%str(This function (bagging) is experimental and untested below SAS 9.4 TS1M3));
@@ -890,8 +890,8 @@ boosting of regression trees
 ******************************************************************************************/
 
 %MACRO boost10_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* gradient boosting*/
   &suppresswarn %__SLwarning(%str(This function (BOOST) is untested below SAS 9.4 TS1M3));
@@ -914,8 +914,8 @@ boosting of regression trees
 
 
 %MACRO boost20_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* gradient boosting*/
   &suppresswarn %__SLwarning(%str(This function (BOOST) is untested below SAS 9.4 TS1M3));
@@ -938,8 +938,8 @@ boosting of regression trees
 
 
 %MACRO boost40_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* gradient boosting*/
   &suppresswarn %__SLwarning(%str(This function (BOOST) is untested below SAS 9.4 TS1M3));
@@ -968,8 +968,8 @@ sherwood
 ******************************************************************************************/
 
 %MACRO sherwoodb_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* Random forest, with replacement*/
   &suppresswarn %__SLwarning(%str(This function (bagging) is experimental and untested below SAS 9.4 TS1M3));
@@ -1073,8 +1073,8 @@ sine function with knots
 default paarameterization of random forests in SAS and R
 ******************************************************************************************/
 %MACRO rfdef_cn(
-                Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, 
-                nominal_predictors=,  continuous_predictors=,weight=,suff=,seed=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* RANDOM FOREST, continuous */
   
