@@ -1,4 +1,4 @@
-%PUT extra_learners v1.0.9;
+%PUT extra_learners v1.0.10;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: sas_superlearner_extra_learners.sas
@@ -189,7 +189,7 @@ generalized additive models: gampl procedure
   /* GENERALIZED ADDITIVE MODEL for continuous variable (using alternative sas proc) */
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
   %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to LINREG, but slower));;
-  %LET _pvar = p_gamPL&SUFF ;
+  %LET _pvar = p_gamPL&deg&SUFF ;
   PROC GAMPL DATA = &indata PLIKEOPTIONS(TECH=QUANEW);
     FORMAT &Y;
     ODS SELECT NONE;
