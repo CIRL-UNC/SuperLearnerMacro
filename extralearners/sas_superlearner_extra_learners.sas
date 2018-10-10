@@ -263,7 +263,7 @@ generalized additive models (proc gam):
   /* GENERALIZED ADDITIVE MODEL for continuous variable (normal assumption)*/
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
   %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to PROC REG, but slower));;
-  %LET _pvar = p_gam&SUFF;
+  %LET _pvar = p_gam&deg&SUFF;
   PROC GAM DATA = &indata ;
     FORMAT &Y;
     ODS SELECT NONE;
