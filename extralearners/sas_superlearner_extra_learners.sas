@@ -1,4 +1,4 @@
-%PUT extra_learners v1.0.7;
+%PUT extra_learners v1.0.8;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: sas_superlearner_extra_learners.sas
@@ -189,29 +189,31 @@ generalized additive models: gampl procedure
   /* GENERALIZED ADDITIVE MODEL for continuous variable (using alternative sas proc) */
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
   %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to LINREG, but slower));;
-  %LET _pvar = p_gampl&deg&SUFF;
+  %LET _pvar = p_gamPL&SUFF ;
   PROC GAMPL DATA = &indata PLIKEOPTIONS(TECH=QUANEW);
-   ODS SELECT NONE;
-     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
-
+    FORMAT &Y;
+    ODS SELECT NONE;
+    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
    MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors, &deg); / 
      DIST=GAUSSIAN;
    ID _all_;
    OUTPUT OUT = &OUTDATA(RENAME=(PRED = &_pvar)) PREDICTED;
   RUN;
   %__CheckSLPredMissing(Y= &_pvar, indata=&OUTDATA);
-  %IF %EVAL(&SLPredMiss.>0) %THEN %DO;
-    * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
-  * temp solution is to do a linear extrapolation to fill in missing values;
-  PROC GENMOD DATA = &OUTDATA;
-  %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
-   MODEL  &_pvar = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &intxterms / LINK=ID D=NORMAL;
-   OUTPUT OUT = &OUTDATA(DROP=) PRED=P_EXTRAPOLATE;
-  RUN;
-  DATA &outdata(DROP=p_extrapolate);
-   SET &outdata;
-   IF &_pvar = . THEN  &_pvar = p_extrapolate;
-  RUN;
+  %IF (&SLPredMiss NE 0 AND &SLPredMiss NE .) %THEN %DO;
+      * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
+    * temp solution is to do a linear extrapolation to fill in missing values;
+    PROC GENMOD DATA = &OUTDATA;
+      %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+      %IF &WEIGHT^= %THEN WEIGHT &weight;;
+      MODEL  &_pvar = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / LINK=ID D=NORMAL;
+      OUTPUT OUT = &OUTDATA PRED=P_EXTRAPOLATE;
+    RUN;
+    DATA &outdata(DROP=p_extrapolate);
+      SET &outdata;
+      IF &_pvar = . THEN  &_pvar = p_extrapolate;
+    RUN;
   %END;
 %MEND gampltempl_cn;
 
@@ -261,27 +263,29 @@ generalized additive models (proc gam):
   /* GENERALIZED ADDITIVE MODEL for continuous variable (normal assumption)*/
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
   %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to PROC REG, but slower));;
-  %LET _pvar = p_gam&deg&SUFF;
-  PROC GAM DATA = &indata  DESCENDING;
-   ODS SELECT NONE;
-     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
+  %LET _pvar = p_gam&SUFF;
+  PROC GAM DATA = &indata ;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+    %IF &WEIGHT^= %THEN FREQ &weight;; *weights possibly truncated to integer values;
    MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors ) %IF (&continuous_predictors~=) %THEN %__GAMSPLINE(&continuous_predictors, &deg); / 
      DIST=GAUSSIAN MAXITER=150 MAXITSCORE=300 ANODEV=NONE;
    OUTPUT OUT = &OUTDATA(RENAME=(P_&Y =  &_pvar) %IF (&continuous_predictors~=) %THEN %__gamdrop(&continuous_predictors);) PREDICTED;
-  RUN;
   %__CheckSLPredMissing(Y= &_pvar, indata=&OUTDATA);
-  %IF %EVAL(&SLPredMiss.>0) %THEN %DO;
-    * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
-  * temp solution is to do a linear extrapolation to fill in missing values;
-  PROC GENMOD DATA = &OUTDATA;
-  %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors;;
-   MODEL  &_pvar = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors  / LINK=ID D=NORMAL;
-   OUTPUT OUT = &OUTDATA(DROP=) PRED=P_EXTRAPOLATE;
-  RUN;
-  DATA &outdata(DROP=p_extrapolate);
-   SET &outdata;
-   IF  &_pvar = . THEN  &_pvar = p_extrapolate;
-  RUN;
+  %IF (&SLPredMiss NE 0 AND &SLPredMiss NE .) %THEN %DO;
+      * gam leaves predictions missing if the predictors fall outside the range of the smooth surface;
+    * temp solution is to do a linear extrapolation to fill in missing values;
+    PROC GENMOD DATA = &OUTDATA;
+      %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
+      %IF &WEIGHT^= %THEN WEIGHT &weight;; *weights possibly truncated to integer values;
+      MODEL  &_pvar = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors  / LINK=ID D=NORMAL;
+      OUTPUT OUT = &OUTDATA PRED=P_EXTRAPOLATE;
+    RUN;
+    DATA &outdata(DROP=p_extrapolate);
+     SET &outdata;
+     IF  &_pvar = . THEN  &_pvar = p_extrapolate;
+    RUN;
   %END;
 %MEND gamtempl_cn;
 
