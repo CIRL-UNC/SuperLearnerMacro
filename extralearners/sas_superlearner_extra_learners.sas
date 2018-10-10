@@ -1,4 +1,4 @@
-%PUT extra_learners v1.0.8;
+%PUT extra_learners v1.0.9;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: sas_superlearner_extra_learners.sas
@@ -195,7 +195,7 @@ generalized additive models: gampl procedure
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
-   MODEL &Y = PARAM(&binary_predictors &ordinal_predictors &nominal_predictors) %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors, &deg); / 
+    MODEL &Y = %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=) OR (&binary_predictors~=)) %THEN PARAM(&binary_predictors &ordinal_predictors &nominal_predictors); %IF (&continuous_predictors~=) %THEN %__GAMplSPLINE(&continuous_predictors); / 
      DIST=GAUSSIAN;
    ID _all_;
    OUTPUT OUT = &OUTDATA(RENAME=(PRED = &_pvar)) PREDICTED;
