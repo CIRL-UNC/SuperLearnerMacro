@@ -1,4 +1,4 @@
-%PUT extra_learners v1.1.0;
+%PUT extra_learners v1.1.1;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: sas_superlearner_extra_learners.sas
@@ -1338,7 +1338,7 @@ These are versions of 'hal' and 'ahal' that control the depth of interactions of
 the basis functions, which are otherwise only limited by the number of variables
 supplied to hal. E.g. hal3 includes only main terms, and all 2 and 3 way interaction terms 
 ******************************************************************************************/
-%MACRO haltemplate_cn(deg=0
+%MACRO haltemplate_cn(deg=0,
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
@@ -1362,7 +1362,7 @@ supplied to hal. E.g. hal3 includes only main terms, and all 2 and 3 way interac
   OPTIONS MERGENOBY=WARN;
 %MEND haltemplate_cn;
 
-%MACRO ahaltemplate_cn(deg=0
+%MACRO ahaltemplate_cn(deg=0,
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
@@ -1387,7 +1387,7 @@ supplied to hal. E.g. hal3 includes only main terms, and all 2 and 3 way interac
   OPTIONS MERGENOBY=WARN;
 %MEND ahaltemplate_cn;
 
-%MACRO ahaltemplate_in(deg=0
+%MACRO ahaltemplate_in(deg=0,
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
@@ -1414,57 +1414,49 @@ supplied to hal. E.g. hal3 includes only main terms, and all 2 and 3 way interac
 
 
 /* Gaussian link */
-%MACRO hal1_cn(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO hal1_cn(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
    %haltemplate_cn(deg=1, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND hal1_cn;
 
-%MACRO hal2_cn(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO hal2_cn(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
    %haltemplate_cn(deg=2, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND hal2_cn;
 
-%MACRO hal3_cn(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO hal3_cn(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
    %haltemplate_cn(deg=3, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND hal3_cn;
 
-%MACRO hal4_cn(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO hal4_cn(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
    %haltemplate_cn(deg=4, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND hal4_cn;
 
-%MACRO ahal1_cn(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO ahal1_cn(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
    %ahaltemplate_cn(deg=1, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND ahal1_cn;
 
-%MACRO ahal2_cn(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO ahal2_cn(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
    %ahaltemplate_cn(deg=2, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND ahal2_cn;
 
-%MACRO ahal3_cn(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO ahal3_cn(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
    %ahaltemplate_cn(deg=3, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND ahal3_cn;
 
-%MACRO ahal4_cn(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO ahal4_cn(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
    %ahaltemplate_cn(deg=4, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
@@ -1472,32 +1464,28 @@ supplied to hal. E.g. hal3 includes only main terms, and all 2 and 3 way interac
 
 
 /* bernoulli link: note this is just a wrapper for the continuous version and does not respect the sample space boundaries */
-%MACRO hal1_in(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO hal1_in(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
   %__SLwarning(%str(HAL does not resepect the 0/1 probability space and should be used with extreme caution (Try using the 'ahal' learner)));
    %haltemplate_cn(deg=1, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND hal1_in;
 
-%MACRO hal2_in(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO hal2_in(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
   %__SLwarning(%str(HAL does not resepect the 0/1 probability space and should be used with extreme caution (Try using the 'ahal' learner)));
    %haltemplate_cn(deg=2, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND hal2_in;
 
-%MACRO hal3_in(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO hal3_in(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
   %__SLwarning(%str(HAL does not resepect the 0/1 probability space and should be used with extreme caution (Try using the 'ahal' learner)));
    %haltemplate_cn(deg=3, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND hal3_in;
 
-%MACRO hal4_in(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO hal4_in(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
   %__SLwarning(%str(HAL does not resepect the 0/1 probability space and should be used with extreme caution (Try using the 'ahal' learner)));
@@ -1505,29 +1493,25 @@ supplied to hal. E.g. hal3 includes only main terms, and all 2 and 3 way interac
 %MEND hal4_in;
 
 
-%MACRO ahal1_in(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO ahal1_in(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
    %ahaltemplate_in(deg=1, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND ahal1_in;
 
-%MACRO ahal2_in(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO ahal2_in(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
    %ahaltemplate_in(deg=2, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND ahal2_in;
 
-%MACRO ahal3_in(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO ahal3_in(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
    %ahaltemplate_in(deg=3, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND ahal3_in;
 
-%MACRO ahal4_in(deg=0
-                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+%MACRO ahal4_in(Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
                 );
    %ahaltemplate_in(deg=4, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
