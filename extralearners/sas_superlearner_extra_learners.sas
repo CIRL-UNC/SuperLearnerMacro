@@ -1,4 +1,4 @@
-%PUT extra_learners v1.0.10;
+%PUT extra_learners v1.1.0;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: sas_superlearner_extra_learners.sas
@@ -1011,64 +1011,64 @@ sine function with knots
 %MEND skntemp_cn; /*optional: include macro name in mend statement with [libraryname]_cn*/
 
 %MACRO skn11_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=1,f=1,nm=11, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=1,f=1,nm=11, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn12_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=1,f=2,nm=12, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=1,f=2,nm=12, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn13_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=1,f=3,nm=13, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=1,f=3,nm=13, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn14_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=1,f=4,nm=14, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=1,f=4,nm=14, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn21_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=2,f=1,nm=21, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=2,f=1,nm=21, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn22_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=2,f=2,nm=22, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=2,f=2,nm=22, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn23_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=2,f=3,nm=23, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=2,f=3,nm=23, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn24_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=2,f=4,nm=24, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=2,f=4,nm=24, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn31_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=3,f=1,nm=31, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=3,f=1,nm=31, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn32_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=3,f=2,nm=32, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=3,f=2,nm=32, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn33_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=3,f=3,nm=33, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=3,f=3,nm=33, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn34_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=3,f=4,nm=34, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=3,f=4,nm=34, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn41_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=4,f=1,nm=41, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=4,f=1,nm=41, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn42_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=4,f=2,nm=42, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=4,f=2,nm=42, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn43_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=4,f=3,nm=43, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=4,f=3,nm=43, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn44_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=4,f=4,nm=44, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=4,f=4,nm=44, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn51_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=5,f=1,nm=51, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=5,f=1,nm=51, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn52_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=5,f=2,nm=52, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=5,f=2,nm=52, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn53_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=5,f=3,nm=53, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=5,f=3,nm=53, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 %MACRO skn54_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %skntemp_cn(k=5,f=4,nm=54, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %skntemp_cn(k=5,f=4,nm=54, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 
 
@@ -1225,59 +1225,59 @@ deep neural networks;
 
 
 %MACRO deepnn_1_50_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %deepnntempl_cn(nhl=1, fpl=50, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %deepnntempl_cn(nhl=1, fpl=50, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 
 %MACRO deepnn_2_50_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %deepnntempl_cn(nhl=2, fpl=50, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %deepnntempl_cn(nhl=2, fpl=50, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 
 %MACRO deepnn_3_50_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %deepnntempl_cn(nhl=3, fpl=50, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %deepnntempl_cn(nhl=3, fpl=50, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 
 %MACRO deepnn_4_50_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %deepnntempl_cn(nhl=4, fpl=50, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %deepnntempl_cn(nhl=4, fpl=50, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 
 %MACRO deepnn_1_10_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %deepnntempl_cn(nhl=1, fpl=10, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %deepnntempl_cn(nhl=1, fpl=10, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 
 %MACRO deepnn_2_10_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %deepnntempl_cn(nhl=2, fpl=10, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %deepnntempl_cn(nhl=2, fpl=10, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 
 %MACRO deepnn_3_10_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %deepnntempl_cn(nhl=3, fpl=10, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %deepnntempl_cn(nhl=3, fpl=10, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 
 %MACRO deepnn_4_10_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %deepnntempl_cn(nhl=4, fpl=10, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %deepnntempl_cn(nhl=4, fpl=10, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 
 %MACRO deepnn_1_80_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %deepnntempl_cn(nhl=1, fpl=80, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %deepnntempl_cn(nhl=1, fpl=80, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 
 %MACRO deepnn_2_40_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %deepnntempl_cn(nhl=2, fpl=40, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %deepnntempl_cn(nhl=2, fpl=40, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 
 %MACRO deepnn_3_27_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %deepnntempl_cn(nhl=3, fpl=27, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %deepnntempl_cn(nhl=3, fpl=27, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 
 %MACRO deepnn_4_20_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %deepnntempl_cn(nhl=4, fpl=20, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %deepnntempl_cn(nhl=4, fpl=20, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 
 %MACRO deepnn_5_16_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %deepnntempl_cn(nhl=5, fpl=16, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %deepnntempl_cn(nhl=5, fpl=16, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 
 %MACRO deepnn_6_13_cn(Y=,indata=, outdata=,binary_predictors=,ordinal_predictors=,nominal_predictors=,continuous_predictors=,weight=,id=,suff=,seed=);;
-   %deepnntempl_cn(nhl=6, fpl=13, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors ,suff=&suff,seed=&seed);;
+   %deepnntempl_cn(nhl=6, fpl=13, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);;
 %MEND;
 
 
@@ -1327,3 +1327,208 @@ DSA algorithm in R;
   PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
 %MEND r_dsa_cn; /*optional: include macro name in mend statement with [libraryname]_cn*/
 *%r_dsa_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
+
+
+/******************************************************************************************
+Highly adaptive LASSO (HAL);
+hal1, hal2, hal3, hal4
+ahal1, ahal2, ahal3, ahal4
+
+These are versions of 'hal' and 'ahal' that control the depth of interactions of
+the basis functions, which are otherwise only limited by the number of variables
+supplied to hal. E.g. hal3 includes only main terms, and all 2 and 3 way interaction terms 
+******************************************************************************************/
+%MACRO haltemplate_cn(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+);
+  /* Highly adaptive LASSO model, selection by cross validation, minimizing CV residual sum of squares */
+  %GetHALDesign(y=&y, vars=&binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors , 
+                indata=&indata, outdata=__sltm0017_, drop=TRUE, intdepthlimit=&deg);
+  OPTIONS MERGENOBY=NOWARN;
+  DATA __sltm0016_;
+   MERGE &indata(KEEP=&Y &weight) __sltm0017_;
+  RUN;
+  PROC GLMSELECT DATA = __sltm0016_ NOPRINT SEED=&seed;
+    FORMAT &Y;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    ODS SELECT NONE;
+    MODEL &Y = __hal_: / SELECTION=LASSO(CHOOSE=CVEX STOP=NONE) CVMETHOD=RANDOM(10);
+    OUTPUT OUT =__sltm0016_(KEEP=p_hal&deg&SUFF) PRED=p_hal&deg&SUFF;
+  RUN;
+  DATA &outdata;
+   MERGE &indata __sltm0016_;
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+%MEND haltemplate_cn;
+
+%MACRO ahaltemplate_cn(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+);
+  /* Highly adaptive LASSO model, selection by cross validation, minimizing CV residual sum of squares */
+  %GetHALDesign(y=&y, vars=&binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors , 
+                indata=&indata, outdata=__sltm0017_, drop=TRUE, intdepthlimit=&deg);
+  OPTIONS MERGENOBY=NOWARN;
+  DATA __sltm0016_;
+   MERGE &indata(KEEP=&Y &weight) __sltm0017_;
+  RUN;
+  PROC HPGENSELECT DATA=__sltm0016_ TECH=QUANEW NOSTDERR LASSORHO=0.8 LASSOSTEPS=100 NORMALIZE=YES;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y = __hal_: / DIST=GAUSSIAN LINK=ID;
+    SELECTION METHOD=lasso(CHOOSE=AICC STOP=AICC);
+    OUTPUT OUT = __sltm0016_(KEEP=p_ahal&deg&SUFF) p = p_ahal&deg&SUFF; 
+  RUN;;
+  DATA &outdata;
+   MERGE &indata __sltm0016_;
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+%MEND ahaltemplate_cn;
+
+%MACRO ahaltemplate_in(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+);
+  /* Highly adaptive LASSO model, selection by cross validation, minimizing CV residual sum of squares */
+  %GetHALDesign(y=&y, vars=&binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors , 
+                indata=&indata, outdata=__sltm0017_, drop=TRUE, intdepthlimit=&deg);
+  OPTIONS MERGENOBY=NOWARN;
+  DATA __sltm0016_;
+   MERGE &indata(KEEP=&Y &weight) __sltm0017_;
+  RUN;
+  PROC HPGENSELECT DATA=__sltm0016_ TECH=QUANEW NOSTDERR LASSORHO=0.8 LASSOSTEPS=100 NORMALIZE=YES;
+    FORMAT &Y;
+    ODS SELECT NONE;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y(EVENT='1') = __hal_: / DIST=BINOMIAL LINK=LOGIT;
+    SELECTION METHOD=lasso(CHOOSE=AICC STOP=AICC);
+    OUTPUT OUT = __sltm0016_(KEEP=p_ahal&deg&SUFF) p = p_ahal&deg&SUFF; 
+  RUN;;
+  DATA &outdata;
+   MERGE &indata __sltm0016_;
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+%MEND ahaltemplate_in;
+
+
+/* Gaussian link */
+%MACRO hal1_cn(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+   %haltemplate_cn(deg=1, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND hal1_cn;
+
+%MACRO hal2_cn(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+   %haltemplate_cn(deg=2, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND hal2_cn;
+
+%MACRO hal3_cn(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+   %haltemplate_cn(deg=3, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND hal3_cn;
+
+%MACRO hal4_cn(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+   %haltemplate_cn(deg=4, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND hal4_cn;
+
+%MACRO ahal1_cn(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+   %ahaltemplate_cn(deg=1, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND ahal1_cn;
+
+%MACRO ahal2_cn(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+   %ahaltemplate_cn(deg=2, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND ahal2_cn;
+
+%MACRO ahal3_cn(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+   %ahaltemplate_cn(deg=3, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND ahal3_cn;
+
+%MACRO ahal4_cn(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+   %ahaltemplate_cn(deg=4, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND ahal4_cn;
+
+
+/* bernoulli link: note this is just a wrapper for the continuous version and does not respect the sample space boundaries */
+%MACRO hal1_in(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+  %__SLwarning(%str(HAL does not resepect the 0/1 probability space and should be used with extreme caution (Try using the 'ahal' learner)));
+   %haltemplate_cn(deg=1, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND hal1_in;
+
+%MACRO hal2_in(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+  %__SLwarning(%str(HAL does not resepect the 0/1 probability space and should be used with extreme caution (Try using the 'ahal' learner)));
+   %haltemplate_cn(deg=2, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND hal2_in;
+
+%MACRO hal3_in(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+  %__SLwarning(%str(HAL does not resepect the 0/1 probability space and should be used with extreme caution (Try using the 'ahal' learner)));
+   %haltemplate_cn(deg=3, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND hal3_in;
+
+%MACRO hal4_in(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+  %__SLwarning(%str(HAL does not resepect the 0/1 probability space and should be used with extreme caution (Try using the 'ahal' learner)));
+   %haltemplate_cn(deg=4, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND hal4_in;
+
+
+%MACRO ahal1_in(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+   %ahaltemplate_in(deg=1, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND ahal1_in;
+
+%MACRO ahal2_in(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+   %ahaltemplate_in(deg=2, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND ahal2_in;
+
+%MACRO ahal3_in(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+   %ahaltemplate_in(deg=3, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND ahal3_in;
+
+%MACRO ahal4_in(deg=0
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+                );
+   %ahaltemplate_in(deg=4, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND ahal4_in;
