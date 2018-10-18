@@ -1,8 +1,8 @@
-%PUT super learner macro v1.1.4;
+%PUT super learner macro v1.1.5;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version: 1.1.4
+* Version: 1.1.5
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS 
@@ -2661,7 +2661,7 @@ RUN;
     ODS SELECT NONE;
     %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &ordinal_predictors &nominal_predictors;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
-        MODEL &Y = %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=) OR (&binary_predictors~=) OR (&SLIXterms~=)) %THEN PARAM(&binary_predictors &ordinal_predictors &nominal_predictors &SLIXterms); %IF (&continuous_predictors~=) %THEN %__GAMPLSPLINE(&continuous_predictors); / 
+        MODEL &Y = %IF ((&ordinal_predictors~=) OR (&nominal_predictors~=) OR (&binary_predictors~=)) %THEN PARAM(&binary_predictors &ordinal_predictors &nominal_predictors); %IF (&continuous_predictors~=) %THEN %__GAMPLSPLINE(&continuous_predictors); / 
      DIST=BINOMIAL;
     ID _all_;
     OUTPUT OUT = &OUTDATA(RENAME=(PRED = &_pvar)) PREDICTED;
