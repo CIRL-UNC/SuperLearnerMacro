@@ -1,4 +1,4 @@
-%PUT extra_learners v1.1.2;
+%PUT extra_learners v1.1.3;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: sas_superlearner_extra_learners.sas
@@ -1578,7 +1578,7 @@ iterations used in calculating the weights
 ******************************************************************************************/
 
 
-%MACRO r_gwqstempl_cn(b=
+%MACRO r_gwqstempl_cn(b=,
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
