@@ -1,4 +1,4 @@
-%PUT extra_learners v1.1.1;
+%PUT extra_learners v1.1.2;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: sas_superlearner_extra_learners.sas
@@ -1516,3 +1516,125 @@ supplied to hal. E.g. hal3 includes only main terms, and all 2 and 3 way interac
                 );
    %ahaltemplate_in(deg=4, Y=&Y ,indata=&indata , outdata=&outdata , binary_predictors=&binary_predictors ,ordinal_predictors=&ordinal_predictors ,nominal_predictors=&nominal_predictors ,continuous_predictors=&continuous_predictors, weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND ahal4_in;
+
+
+%MACRO r_gwqs_cn(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+  );
+  %__SLnote(%str(R package 'SLmix' must be installed));;
+  DATA __SLtm0016_;
+   SET &indata;
+   FORMAT &Y;
+   %IF &weight= %THEN %DO;
+     %LET weight=wwwwww;
+     wwwwww=1;
+   %END;
+   KEEP &Y &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &weight;
+  RUN;
+  FILENAME rcode TEMP; *rsubmit requires use of include statement with code from file;
+  * write R statements to file;
+  DATA _null_;
+   FILE rcode;
+   PUT 'SUBMIT y w seed/ R;';
+   PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
+   PUT 'set.seed(&seed)';
+   PUT 'suppressWarnings(suppressMessages(library("SLmix")))';
+   PUT 'Y = mdata[,"&Y"]';
+   PUT 'X = mdata[,-grep(paste0("&y", "|", "&w"), names(mdata))]';
+   PUT 'nm = names(X)';
+   PUT 'Xfl = rdata[,-grep(paste0("&y", "|", "&w"), names(rdata))]';
+   PUT 'X$Y = Y';
+   *PUT 'W = mdata[,"&w"]';
+   PUT 'suppressWarnings(suppressMessages(rmod <- ml.gwqs(Y ~ NULL, mix_name=nm, data=X, q = 4, b=100, b1_pos=TRUE, family="gaussian")))';
+   PUT 'p_r <- predict(fit=rmod, mix_name=nm, newdata=Xfl)';
+   PUT 'ENDSUBMIT;';
+  RUN;
+  /*%PUT &rcode ;*/
+  PROC IML;
+   RUN ExportDataSetToR("Work.__SLtm0016_", "rdata");
+   y = "&y";
+   w = "&weight";
+   seed = "&seed";
+   %INCLUDE rcode;
+   CALL ImportDatasetFromR("work.__rpreds", "p_r" );
+  QUIT;
+  OPTIONS MERGENOBY=NOWARN;
+  DATA &outdata;
+    MERGE &indata __rpreds(RENAME=(p_r = p_r_gwqs&SUFF));
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+  PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
+%MEND r_gwqs_cn; /*optional: include macro name in mend statement with [libraryname]_cn*/
+*%r_gwqs_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
+
+
+/******************************************************************************************
+generalized weighte quantile sums regression;
+r_gwqs3 r_gwqs10 (continuous only)
+
+These are versions of 'r_gwqs' that control the number of bootstrap
+iterations used in calculating the weights 
+******************************************************************************************/
+
+
+%MACRO r_gwqstempl_cn(b=
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+  );
+  %__SLnote(%str(R package 'SLmix' must be installed));;
+  DATA __SLtm0016_;
+   SET &indata;
+   FORMAT &Y;
+   %IF &weight= %THEN %DO;
+     %LET weight=wwwwww;
+     wwwwww=1;
+   %END;
+   KEEP &Y &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &weight;
+  RUN;
+  FILENAME rcode TEMP; *rsubmit requires use of include statement with code from file;
+  * write R statements to file;
+  DATA _null_;
+   FILE rcode;
+   PUT 'SUBMIT y w seed/ R;';
+   PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
+   PUT 'set.seed(&seed)';
+   PUT 'suppressWarnings(suppressMessages(library("SLmix")))';
+   PUT 'Y = mdata[,"&Y"]';
+   PUT 'X = mdata[,-grep(paste0("&y", "|", "&w"), names(mdata))]';
+   PUT 'nm = names(X)';
+   PUT 'Xfl = rdata[,-grep(paste0("&y", "|", "&w"), names(rdata))]';
+   PUT 'X$Y = Y';
+   *PUT 'W = mdata[,"&w"]';
+   PUT 'suppressWarnings(suppressMessages(rmod <- ml.gwqs(Y ~ NULL, mix_name=nm, data=X, q = 4, b=&b, b1_pos=TRUE, family="gaussian")))';
+   PUT 'p_r <- predict(fit=rmod, mix_name=nm, newdata=Xfl)';
+   PUT 'ENDSUBMIT;';
+  RUN;
+  /*%PUT &rcode ;*/
+  PROC IML;
+   RUN ExportDataSetToR("Work.__SLtm0016_", "rdata");
+   y = "&y";
+   w = "&weight";
+   seed = "&seed";
+   %INCLUDE rcode;
+   CALL ImportDatasetFromR("work.__rpreds", "p_r" );
+  QUIT;
+  OPTIONS MERGENOBY=NOWARN;
+  DATA &outdata;
+    MERGE &indata __rpreds(RENAME=(p_r = p_r_gwqs&SUFF));
+  RUN;
+  OPTIONS MERGENOBY=WARN;
+  PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
+%MEND r_gwqstempl_cn; /*optional: include macro name in mend statement with [libraryname]_cn*/
+*%r_gwqstempl_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
+
+%MACRO r_gwqs3_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,id=,suff=,seed=);
+      %r_gwqstempl_cn(B=3, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND r_gwqs3_cn;
+
+%MACRO r_gwqs10_cn(Y=,indata=, outdata=, binary_predictors=, ordinal_predictors=, nominal_predictors=,  continuous_predictors=,weight=,id=,suff=,seed=);
+      %r_gwqstempl_cn(B=10, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
+      nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
+%MEND r_gwqs10_cn;
+
