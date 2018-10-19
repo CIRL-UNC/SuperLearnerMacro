@@ -1,8 +1,8 @@
-%PUT super learner macro v1.1.6;
+%PUT super learner macro v1.1.7;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version: 1.1.6
+* Version: 1.1.7
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS 
@@ -464,7 +464,7 @@ main work horse macros: _SuperLearner and _CVSuperLearner;
     * check for any missing values in predictors, and fail if any;
     %__CheckMissing(&predictors, &indata);
     *collect some information;
-    DATA __sltm0017_; SET &indata; IF _N_<300; RUN;
+    DATA __sltm0017_; SET &indata; /*IF _N_<300*/; RUN; *todo: refactor so less expensive and less error prone;
     %__SLPBinary(__sltm0017_, &Y); *check whether or not predicting binary variable (assumed continuous otherwise);
     *catch some common errors (some will stop the macro, some will result in automatic corrections);
     %__commonerrors(); 
