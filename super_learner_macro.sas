@@ -1,8 +1,8 @@
-%PUT super learner macro v1.1.8;
+%PUT super learner macro v1.1.9;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version: 1.1.8
+* Version: 1.1.9
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS 
@@ -487,7 +487,6 @@ main work horse macros: _SuperLearner and _CVSuperLearner;
   *define some fcmp functions;
   %__MKFUNCS();
   *prepare interaction terms;
-  *%LET SLIXterms=; *prevent error in the case of an errant learner that uses SLIXTERMS inappropriately;
   %__makeintx(bins = &binary_predictors,  others = &ordinal_predictors &nominal_predictors &continuous_predictors);
 /*
 _main: the absolute barebones super learner macro (not to be called on its own)

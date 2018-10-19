@@ -1,4 +1,4 @@
-%PUT extra_learners v1.1.4;
+%PUT extra_learners v1.1.5;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: sas_superlearner_extra_learners.sas
@@ -1578,7 +1578,7 @@ iterations used in calculating the weights
 ******************************************************************************************/
 
 
-%MACRO r_gwqstempl_cn(b=,
+%MACRO r_gwqstempl_cn(b=100,
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
@@ -1621,7 +1621,7 @@ iterations used in calculating the weights
   QUIT;
   OPTIONS MERGENOBY=NOWARN;
   DATA &outdata;
-    MERGE &indata __rpreds(RENAME=(p_r = p_r_gwqs&SUFF));
+    MERGE &indata __rpreds(RENAME=(p_r = p_r_gwqs&b&SUFF));
   RUN;
   OPTIONS MERGENOBY=WARN;
   PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
@@ -1629,7 +1629,7 @@ iterations used in calculating the weights
 *%r_gwqstempl_cn(Y=y,indata=train, outdata=tdat, binary_predictors=a z2, ordinal_predictors=, nominal_predictors=,  continuous_predictors=z1 z3,suff=test);
 
 
-%MACRO r_gwqstempl_in(b=,
+%MACRO r_gwqstempl_in(b=100,
                 Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
   );
@@ -1657,7 +1657,7 @@ iterations used in calculating the weights
    PUT 'Xfl = rdata[,-grep(paste0("&y", "|", "&w"), names(rdata))]';
    PUT 'X$Y = Y';
    *PUT 'W = mdata[,"&w"]';
-   PUT 'suppressWarnings(suppressMessages(rmod <- ml.gwqs(Y ~ NULL, mix_name=nm, data=X, q = 4, b=100, b1_pos=TRUE, family="binomial")))';
+   PUT 'suppressWarnings(suppressMessages(rmod <- ml.gwqs(Y ~ NULL, mix_name=nm, data=X, q = 4, b=&b, b1_pos=TRUE, family="binomial")))';
    PUT 'p_r <- predict(fit=rmod, mix_name=nm, newdata=Xfl)';
    PUT 'ENDSUBMIT;';
   RUN;
@@ -1672,7 +1672,7 @@ iterations used in calculating the weights
   QUIT;
   OPTIONS MERGENOBY=NOWARN;
   DATA &outdata;
-    MERGE &indata __rpreds(RENAME=(p_r = p_r_gwqs&SUFF));
+    MERGE &indata __rpreds(RENAME=(p_r = p_r_gwqs&b&SUFF));
   RUN;
   OPTIONS MERGENOBY=WARN;
   PROC SQL NOPRINT; DROP TABLE __rpreds; QUIT;
