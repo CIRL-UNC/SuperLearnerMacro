@@ -1,4 +1,4 @@
-%PUT extra_learners v1.1.5;
+%PUT extra_learners v1.1.6;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: sas_superlearner_extra_learners.sas
@@ -1596,7 +1596,7 @@ iterations used in calculating the weights
   * write R statements to file;
   DATA _null_;
    FILE rcode;
-   PUT 'SUBMIT y w seed/ R;';
+   PUT 'SUBMIT y w b seed/ R;';
    PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
    PUT 'set.seed(&seed)';
    PUT 'suppressWarnings(suppressMessages(library("SLmix")))';
@@ -1616,6 +1616,7 @@ iterations used in calculating the weights
    y = "&y";
    w = "&weight";
    seed = "&seed";
+   b="&b";
    %INCLUDE rcode;
    CALL ImportDatasetFromR("work.__rpreds", "p_r" );
   QUIT;
@@ -1647,7 +1648,7 @@ iterations used in calculating the weights
   * write R statements to file;
   DATA _null_;
    FILE rcode;
-   PUT 'SUBMIT y w seed/ R;';
+   PUT 'SUBMIT y w b seed/ R;';
    PUT 'mdata = rdata[!is.na(rdata[, "&Y" ]),]';
    PUT 'set.seed(&seed)';
    PUT 'suppressWarnings(suppressMessages(library("SLmix")))';
@@ -1667,6 +1668,7 @@ iterations used in calculating the weights
    y = "&y";
    w = "&weight";
    seed = "&seed";
+   b="&b";
    %INCLUDE rcode;
    CALL ImportDatasetFromR("work.__rpreds", "p_r" );
   QUIT;
