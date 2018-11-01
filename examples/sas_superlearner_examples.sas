@@ -291,7 +291,7 @@ Example 3b: creating a new learner (CART with different tuning parameters)
 
 
 /**********************************************************************************************************************
-Example 4: making predictions in a validation data set
+Example 4: making predictions in a validation data set (example from documentation)
 **********************************************************************************************************************/
 
 

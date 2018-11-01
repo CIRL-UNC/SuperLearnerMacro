@@ -28,7 +28,7 @@ Simulate data
     DATA train valid ;
       LENGTH id x l 3;
       CALL STREAMINIT(1192887);
-      DO id = 1 TO 1100;
+      DO id = 1 TO 2200;
         u = RAND("uniform")*0.1 + 0.4;  
         l = RAND("bernoulli", 1/(1+exp(-1 + u)));
         c = RAND("normal", u, 1);
@@ -36,11 +36,11 @@ Simulate data
         x = RAND("bernoulli", 1/(1+exp(-1.5 + 2*l + c + c2)));
         y = RAND("NORMAL", u + x, 0.5);
         KEEP x l c c2 y;
-        IF id <= 100 THEN OUTPUT train;
+        IF id <= 200 THEN OUTPUT train;
         ELSE OUTPUT valid;
       END;
     RUN;
-
+    
 Call super learner macro
 
     TITLE "Super learner fit";
@@ -57,14 +57,15 @@ Call super learner macro
 
 Results: linear regression has lowest cross-validated expected loss (CVrisk), but LASSO also contributes to super learner fit.
 
-           Super learner fit
-    
-    Learner    Coefficient     CVrisk
-    
-    linreg       0.82097      0.23423
-    lasso        0.17903      0.26555
-    gampl        0.00000      0.30935
-    
+    Super learner coefficients, 10-fold cross validated risk/expected loss
+      ---------------------------------------------
+        Learner      Coefficient   CV risk
+      ---------------------------------------------
+        linreg       0.57451       0.25875
+        enet         0.42548       0.26086
+        gampl        0.00001       0.26075
+      ---------------------------------------------
+        
    
     
 Estimate mean squared error
@@ -85,20 +86,20 @@ Estimate mean squared error
 Results: super learner has lowest mean squared prediction error (validation data: __train=0)
 
     Mean squared error of predictions in training/validation data
-                  The MEANS Procedure
-   
+    The MEANS Procedure
+
                   N
     __train     Obs    Variable                Mean
     -----------------------------------------------
-          0    1000    squarederror_sl        0.245
-                       squarederror_linreg    0.247
-                       squarederror_lasso     0.280
-                       squarederror_gampl     0.247
-   
-          1     100    squarederror_sl        0.211
-                       squarederror_linreg    0.209
-                       squarederror_lasso     0.257
-                       squarederror_gampl     0.207
+          0    2000    squarederror_sl        0.247
+                       squarederror_linreg    0.249
+                       squarederror_enet      0.248
+                       squarederror_gampl     0.250
+    
+          1     200    squarederror_sl        0.246
+                       squarederror_linreg    0.245
+                       squarederror_enet      0.253
+                       squarederror_gampl     0.243
     -----------------------------------------------
 
 
