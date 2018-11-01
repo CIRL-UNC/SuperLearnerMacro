@@ -1011,7 +1011,7 @@ RUN;
    check that intvar is removed from predictor variables if trstrat is used
    allows identical specification of models for trstrat = true and false 
   */
-  %LCOAL bp cp np op __p;
+  %LOCAL bp cp np op __p;
   %LET bp = ;
   %LET cp = ;
   %LET np = ;
@@ -2690,7 +2690,7 @@ RUN;
   /* GENERALIZED ADDITIVE MODEL (using alternative sas proc), interaction terms */
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
   %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to LOGIT, but slower));;
-  %LET _pvar = p_gamPLint&SUFF.;
+  %LET _pvar = p_gamplint&SUFF.;
   PROC GAMPL DATA = &indata PLIKEOPTIONS(TECH=QUANEW);
     FORMAT &Y SLrevf.;
     ODS SELECT NONE;
@@ -2725,7 +2725,7 @@ RUN;
   /* GENERALIZED ADDITIVE MODEL for continuous variable (using alternative sas proc) */
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
   %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to LINREG, but slower));;
-  %LET _pvar = p_gamPL&SUFF ;
+  %LET _pvar = p_gampl&SUFF ;
   PROC GAMPL DATA = &indata PLIKEOPTIONS(TECH=QUANEW);
     FORMAT &Y;
     ODS SELECT NONE;
@@ -2760,7 +2760,7 @@ RUN;
   /* GENERALIZED ADDITIVE MODEL for continuous variable (using alternative sas proc), interaction terms */
   %__SLnote(%str(GAMS use splines on all continuous variables, which may require a lot of computational power, user beware));;
   %IF (&continuous_predictors=) %THEN %__SLwarning(%str(GAMS with no continuous variables are equivalent to LINREGINT, but slower));;
-  %LET _pvar = p_gamPLint&SUFF;
+  %LET _pvar = p_gamplint&SUFF;
   PROC GAMPL DATA = &indata PLIKEOPTIONS(TECH=QUANEW);
     FORMAT &Y;
     ODS SELECT NONE;
