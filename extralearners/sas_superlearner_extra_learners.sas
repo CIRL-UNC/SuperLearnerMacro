@@ -1093,19 +1093,12 @@ default paarameterization of random forests in SAS and R
    SCORE out=&outdata (drop = _Warn_ R_&Y RENAME=(p_&Y = p_rdeff&SUFF));
    ID _ALL_;
   RUN;
-  /* to do: expand to out of data prediction using HP4score */
 %MEND rfdef_cn;
 
 
-%MACRO r_rfdef_cn(Y=,
-             indata=, 
-             outdata=, 
-             binary_predictors=, 
-             ordinal_predictors=, 
-             nominal_predictors=,  
-             continuous_predictors=,
-             suff=,
-             seed=
+%MACRO r_rfdef_cn(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   
   %__SLnote(%str(R package 'randomForest' must be installed));;

@@ -296,30 +296,29 @@ Example 4: making predictions in a validation data set (example from documentati
 
 
   *0) simulate data, including 5-fold cross validation sets;
-  DATA train valid ;
-  LENGTH id x l 3;
-  CALL STREAMINIT(1192887);
-  *observed data;
-   DO id = 1 TO 1300;
-    py0_true = RAND("uniform")*0.1 + 0.4;  
-    l = RAND("bernoulli", 1/(1+exp(-1 + py0_true)));
-    c = RAND("normal", py0_true, 1);
-    c2 = RAND("normal", py0_true, .3);
-    x = RAND("bernoulli", 1/(1+exp(-1.5 + 2*l + c + c2)));
-    py = py0_true + 1*(x); *true risk difference per unit exposure;
-    y = RAND("NORMAL", py, 0.5);
-    KEEP x l c c2 y;
-    IF id <= 300 THEN OUTPUT train;
-    ELSE OUTPUT valid;
-   END;
-  RUN;
+     DATA train valid ;
+      LENGTH id x l 3;
+      CALL STREAMINIT(1192887);
+      DO id = 1 TO 2200;
+        u = RAND("uniform")*0.1 + 0.4;  
+        l = RAND("bernoulli", 1/(1+exp(-1 + u)));
+        c = RAND("normal", u, 1);
+        c2 = RAND("normal", u, .3);
+        x = RAND("bernoulli", 1/(1+exp(-1.5 + 2*l + c + c2)));
+        y = RAND("NORMAL", u + x, 0.5);
+        KEEP x l c c2 y;
+        IF id <= 200 THEN OUTPUT train;
+        ELSE OUTPUT valid;
+      END;
+    RUN;
+
   TITLE "Super learner predictions in validation data";
   %SuperLearner(Y=y,
                 X=x l c c2,
                 indata=train, 
                 preddata=valid, 
                 outdata=sl_testdata,
-                library= linreg lasso gampl,
+                library= linreg enet gampl,
                 folds=10, 
                 method=NNLS, 
                 dist=GAUSSIAN 
@@ -333,7 +332,7 @@ Example 4: making predictions in a validation data set (example from documentati
    SET sl_testdata;
    squarederror_sl = (y - p_SL_full)**2;
    squarederror_linreg = (y - p_linreg_full)**2;
-   squarederror_lasso = (y - p_lasso_full)**2;
+   squarederror_enet = (y - p_enet_full)**2;
    squarederror_gampl = (y - p_gampl_full)**2;
   PROC MEANS DATA = mse FW=5 MEAN;
    TITLE 'Mean squared error of predictions in training/validation data';
