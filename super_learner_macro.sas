@@ -1,8 +1,8 @@
-%PUT super learner macro v1.1.9;
+%PUT super learner macro v1.1.10;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: super_learner_macro.sas
-* Version: 1.1.9
+* Version: 1.1.10
 * Contact: akeil@unc.edu
 * Tasks: general purpose macro to get cross validated predictions from super learner using parametric, semiparametric, 
    and machine learning functions in SAS 
@@ -1808,7 +1808,7 @@ RUN;
                 nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
 );
   /* intercept only model */
-  PROC GENMOD DATA = &indata;
+  PROC GENMOD DATA = &indata DESCENDING;
     FORMAT &Y;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
     MODEL &Y = / LINK=LOGIT D=BINOMIAL;
@@ -2826,7 +2826,7 @@ RUN;
     FORMAT &Y;
     %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors ;;
     %IF &WEIGHT^= %THEN WEIGHT &weight;;
-    MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms / LINK=LOGIT DIST=BINOMIAL DFPERBASIS=2;
+    MODEL &Y.(DESCENDING) = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms / LINK=LOGIT DIST=BINOMIAL DFPERBASIS=2;
     OUTPUT OUT = &OUTDATA PRED=p_marsint&SUFF;
   RUN;
   DATA &outdata;

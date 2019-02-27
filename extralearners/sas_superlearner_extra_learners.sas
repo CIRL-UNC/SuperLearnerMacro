@@ -1,4 +1,4 @@
-%PUT extra_learners v1.1.6;
+%PUT extra_learners v1.1.7;
 /**********************************************************************************************************************
 * Author: Alex Keil
 * Program: sas_superlearner_extra_learners.sas
@@ -1717,3 +1717,72 @@ iterations used in calculating the weights
       %r_gwqstempl_in(B=50, Y=&Y,indata=&indata, outdata=&outdata, binary_predictors=&binary_predictors, ordinal_predictors=&ordinal_predictors, 
       nominal_predictors=&nominal_predictors,  continuous_predictors=&continuous_predictors,weight=&weight,id=&id,suff=&suff,seed=&seed);
 %MEND r_gwqs50_in;
+
+
+/******************************************************************************************
+Fast mars
+******************************************************************************************/
+
+
+%MACRO fastmars_in(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+);
+  /* multivariate adaptive regression splines */
+  PROC ADAPTIVEREG DATA = &indata SEED=&seed;
+    FORMAT &Y;
+    %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors ;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y.(DESCENDING) = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / LINK=LOGIT DIST=BINOMIAL DFPERBASIS=2 FAST;
+    OUTPUT OUT = &OUTDATA PRED=p_fastmars&SUFF;
+  RUN;
+  DATA &outdata;
+   SET &outdata;
+   p_fastmars&SUFF = EXPIT(p_fastmars&SUFF);
+%MEND fastmars_in;
+
+%MACRO fastmars_cn(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+);
+  /* multivariate adaptive regression splines, continuous */
+  PROC ADAPTIVEREG DATA = &indata SEED=&seed;
+    FORMAT &Y;
+    %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors ;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors / LINK=ID DFPERBASIS=2  FAST;
+    OUTPUT OUT = &OUTDATA PRED=p_fastmars&SUFF;
+  RUN;
+%MEND fastmars_cn;
+
+%MACRO fastmarsint_in(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+);
+  /* multivariate adaptive regression splines, including interactions */
+  PROC ADAPTIVEREG DATA = &indata SEED=&seed;
+    FORMAT &Y;
+    %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors ;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y.(DESCENDING) = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms / LINK=LOGIT DIST=BINOMIAL DFPERBASIS=2  FAST;
+    OUTPUT OUT = &OUTDATA PRED=p_fastmarsint&SUFF;
+  RUN;
+  DATA &outdata;
+   SET &outdata;
+   p_fastmarsint&SUFF = EXPIT(p_fastmarsint&SUFF);
+  RUN;
+%MEND fastmarsint_in;
+
+%MACRO fastmarsint_cn(
+                Y=, indata=, outdata=, binary_predictors=, ordinal_predictors=, 
+                nominal_predictors=,  continuous_predictors=, weight=, id=, suff=, seed=
+);
+  /* multivariate adaptive regression splines, continuous including interactions */
+  PROC ADAPTIVEREG DATA = &indata SEED=&seed;
+    FORMAT &Y;
+    %IF ((&binary_predictors~=) OR (&ordinal_predictors~=) OR (&nominal_predictors~=)) %THEN CLASS &binary_predictors &ordinal_predictors &nominal_predictors ;;
+    %IF &WEIGHT^= %THEN WEIGHT &weight;;
+    MODEL &Y = &binary_predictors &ordinal_predictors &nominal_predictors &continuous_predictors &SLIXterms / LINK=ID DFPERBASIS=2  FAST;
+    OUTPUT OUT = &OUTDATA PRED=p_fastmarsint&SUFF;
+  RUN;
+%MEND fastmarsint_cn;

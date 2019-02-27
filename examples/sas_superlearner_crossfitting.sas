@@ -32,13 +32,14 @@ PROC SQL; DROP TABLE cfests;quit;
   LENGTH id x l 3;
   CALL STREAMINIT(&JJ);
   *observed data;
-   n2 = 200;
+   n2 = 300;
    DO id = 1 TO n2*2;
     py0_true = RAND("uniform")*0.1 + 0.4;  
-    l = RAND("bernoulli", 1/(1+exp(-1 + py0_true)));
-    c = RAND("normal", py0_true, 1);
-    c2 = RAND("normal", py0_true, .3);
-    x = RAND("bernoulli", 1/(1+exp(-1.5 + 2*l + c + c2)));
+    l = RAND("bernoulli", 1/(1+exp(-1 + 2*py0_true)));
+    c  = RAND("normal", py0_true + py0_true**2 - (py0_true>.45), 1);
+    c2 = RAND("normal", py0_true - py0_true**2, .3);
+    u = RAND("normal", -1.5 + 2*l - c2*c + c*l - 3*(c<0), 1);
+    x = RAND("bernoulli", 1/(1+exp(-u)));
     py = py0_true + .1*(x); 
     py1_true = py0_true + .1;
     rd_true = 0.1;
@@ -48,16 +49,16 @@ PROC SQL; DROP TABLE cfests;quit;
     IF id > n2 THEN OUTPUT a2;
    END;
   RUN;
+  ODS SELECT NONE;
 
 * first with just g-computation;
-  ODS LISTING CLOSE;
   %SuperLearner(Y=y,
                 intvars=x,
                 x= x l c c2,
                 indata=a, 
                 outdata=sl_gc,
                 library= logit lasso gampl rf nn mars, 
-                method=NNLOGLIK, 
+                method=BNNLS, 
                 dist=BERNOULLI 
   );
 * now with IPW;
@@ -66,11 +67,12 @@ PROC SQL; DROP TABLE cfests;quit;
                 indata=a, 
                 outdata=sl_ipw,
                 library= logit lasso gampl rf nn mars, 
-                method=NNLOGLIK, 
+                method=BNNLS, 
                 dist=BERNOULLI 
   );
 
 *using cross-fit to get estimate;
+  * outcome regression;
   %SuperLearner(Y=y,
                 intvars=x,
                 x= x l c c2,
@@ -78,7 +80,7 @@ PROC SQL; DROP TABLE cfests;quit;
                 preddata=a2, 
                 outdata=sl_gc1,
                 library= logit lasso gampl rf nn mars, 
-                method=NNLOGLIK, 
+                method=BNNLS, 
                 dist=BERNOULLI 
   );
   %SuperLearner(Y=y,
@@ -88,17 +90,17 @@ PROC SQL; DROP TABLE cfests;quit;
                 preddata=a1, 
                 outdata=sl_gc2,
                 library= logit lasso gampl rf nn mars, 
-                method=NNLOGLIK, 
+                method=BNNLS, 
                 dist=BERNOULLI 
   );
-  
+  *reverse ordering for ipw part;
   %SuperLearner(Y=x,
                 x= l c c2,
                 indata=a1, 
                 preddata=a2, 
                 outdata=sl_ipw1,
                 library= logit lasso gampl rf nn mars, 
-                method=NNLOGLIK, 
+                method=BNNLS, 
                 dist=BERNOULLI 
   );
   %SuperLearner(Y=x,
@@ -107,9 +109,10 @@ PROC SQL; DROP TABLE cfests;quit;
                 preddata=a1, 
                 outdata=sl_ipw2,
                 library= logit lasso gampl rf nn mars, 
-                method=NNLOGLIK, 
+                method=BNNLS, 
                 dist=BERNOULLI 
   );
+  ODS SELECT NONE;
 PROC MEANS DATA = sl_gc NOPRINT;
  CLASS __INT;
  VAR p_sl_full;
@@ -152,6 +155,8 @@ RUN;
 
 *cross fit aipw;
 DATA sl_ipwcf;
+ *ipw = just concatenate these data sets __train=0 defines whether you were in validation half of data;
+  *this dataset contains 2*n observations where everyone is in both __train=0 and __train=1;
   SET sl_ipw1 sl_ipw2;
   ps = p_sl_full;
   ipw = x/p_sl_full + (1-x)/(1-p_sl_full);
@@ -161,6 +166,7 @@ PROC SORT DATA = sl_gc1; BY  __intgroup id;
 PROC SORT DATA = sl_gc2; BY  __intgroup id;
 PROC SORT DATA = sl_ipwcf; BY DESCENDING __TRAIN id;
 DATA gc1 (KEEP=ID py0_GF py1_GF py __intgroup );
+ *contains 6*1/2*n = 3*n observations = 3 treatments * (training set = 1/2*n + validation set = 1/2*n);
  SET sl_gc1(keep=id __train __intgroup __int p_sl_full);
  BY  __intgroup id ;
  RETAIN py0_GF py1_GF py;
@@ -175,7 +181,7 @@ DATA gc2 (KEEP=ID py0_GF py1_GF py __intgroup);
  RETAIN py0_GF py1_GF py;
  IF __INT=0 then py0_GF = p_sl_full;
  IF __INT=1 then py1_GF = p_sl_full;
- IF __INT<.z then py = p_sl_full;
+ IF __INT<.z then py = p_sl_full; *.t is: validation set, natural course and .o is: training set, natural course;
  IF last.id THEN OUTPUT;
 RUN;
 DATA sl_gcCF;
@@ -185,7 +191,9 @@ PROC SORT DATA = sl_gcCF;
 RUN;
 
 DATA AIPWcf;
- MERGE sl_gccf sl_ipwcf;
+ MERGE sl_gccf(KEEP=id py0_gf py1_gf py)/* 2*n, sorted by ID within __train, validation set comes first*/
+        sl_ipwcf(KEEP=ps y x) /* 2*n, sorted by ID within __train, training set comes first*/
+		;
     mu1_ipw = (y*x/ps);
     mu0_ipw = (y*(1-x)/(1-ps));
     * augmentation terms for AIPW;
@@ -195,7 +203,6 @@ DATA AIPWcf;
 	py0_aipw = mu0_ipw - a0_aipw;
 	rd_aipw = py1_aipw - py0_aipw;
 RUN;
-
 
 * combining results;
 PROC GENMOD DATA = sl_ipw DESCENDING;
@@ -211,7 +218,7 @@ PROC MEANS DATA = aipw NOPRINT;
  TITLE 'AIPW';
  VAR rd_aipw;
  OUTPUT OUT = ai(DROP=_:) MEAN=aipw;
-PROC MEANS DATA = aipwcf NOPRINT;
+PROC MEANS DATA = aipwcf ;
  TITLE 'AIPW, cross fit';
  VAR rd_aipw;
  OUTPUT OUT = aicf(DROP=_:) MEAN=aipw_cf;
@@ -226,13 +233,16 @@ DATA ests;
  MERGE gf ip(KEEP=IPW) ai aicf tr;
 RUN;
 PROC APPEND DATA=ests BASE=cfests;RUN;
-ODS LISTING;
+ODS SELECT ALL;
+PROC MEANS DATA = cfests;
+  TITLE "All results through iteration &jj";
+RUN;
 %LET jj = %EVAL(&jj+1);
 %END;
 %MEND;
 
 
-%CROSSFIT(iter=2);
+%CROSSFIT(iter=100);
 
 
 PROC MEANS DATA = cfests;
@@ -250,10 +260,10 @@ The MEANS Procedure
 
 Variable      N            Mean         Std Dev         Minimum         Maximum
 -------------------------------------------------------------------------------
-gf          100       0.0719801       0.0645197      -0.0519762       0.2406824
-ipw         100       0.1001787       0.0658309      -0.0665165       0.3040189
-aipw        100       0.0989559       0.0668827      -0.0607338       0.2980105
-aipw_cf     100       0.1051217       0.0748453      -0.0695988       0.3228299
+gf          100       0.0853067       0.0587374      -0.0311990       0.2271085
+ipw         100       0.1033377       0.0578000      -0.0248575       0.2392796
+aipw        100       0.0996778       0.0585225      -0.0270127       0.2288316
+aipw_cf     100       0.1127774       0.0979231      -0.0763829       0.4705641
 tr          100       0.1000000               0       0.1000000       0.1000000
 -------------------------------------------------------------------------------
 */
