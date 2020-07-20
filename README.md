@@ -61,9 +61,9 @@ Results: linear regression has lowest cross-validated expected loss (CVrisk), bu
       ---------------------------------------------
         Learner      Coefficient   CV risk
       ---------------------------------------------
-        linreg       0.57451       0.25875
-        enet         0.42548       0.26086
-        gampl        0.00001       0.26075
+        linreg       0.69087       0.25875
+        lasso        0.30893       0.26399
+        gampl        0.00020       0.26075
       ---------------------------------------------
         
    
@@ -91,15 +91,15 @@ Results: super learner has lowest mean squared prediction error (validation data
                   N
     __train     Obs    Variable                Mean
     -----------------------------------------------
-          0    2000    squarederror_sl        0.247
-                       squarederror_linreg    0.249
-                       squarederror_enet      0.248
-                       squarederror_gampl     0.250
-    
-          1     200    squarederror_sl        0.246
-                       squarederror_linreg    0.245
-                       squarederror_enet      0.253
-                       squarederror_gampl     0.243
+           0    2000    squarederror_sl        0.248
+                        squarederror_linreg    0.249
+                        squarederror_lasso     0.250
+                        squarederror_gampl     0.250
+
+           1     200    squarederror_sl        0.245
+                        squarederror_linreg    0.245
+                        squarederror_lasso     0.252
+                        squarederror_gampl     0.243
     -----------------------------------------------
 
 
